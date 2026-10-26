@@ -1,0 +1,1 @@
+window.SIMET_API_URL = '/api';

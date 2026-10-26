@@ -1,0 +1,100 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/rrhh"><span class="brand-mark">S</span><span>SIMET <small>ASISTENCIA</small></span></a>
+    <div class="topbar-actions"><span class="admin-label">GESTIÓN DE PERSONAL</span><span class="user-chip"><span class="avatar avatar-admin">{{ usuario?.nombre?.slice(0, 1) || 'R' }}</span><span>{{ usuario?.nombre }}</span></span><button class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="salir()"><ng-icon name="lucideLogOut" size="17" /></button></div>
+  </header>
+
+  <main class="workspace rrhh-workspace">
+    <div class="page-heading rrhh-heading">
+      <div><p class="eyebrow">ADMINISTRACIÓN / ASISTENCIA</p><h1>Control de personal</h1><p class="subheading">Consulta, corrige y documenta la jornada del equipo.</p></div>
+      <div class="heading-actions"><button class="button button-outline" type="button" (click)="abrirIncidencia()"><ng-icon name="lucidePlus" size="16" /> Nueva incidencia</button><button class="button button-accent" type="button" (click)="exportar()" [disabled]="exportando()"><ng-icon name="lucideArrowDownToLine" size="16" /> {{ exportando() ? 'Preparando…' : 'Exportar Excel' }}</button></div>
+    </div>
+
+    @if (aviso(); as mensaje) {
+      <div class="alert" [class.alert-success]="mensaje.tipo === 'success'" [class.alert-error]="mensaje.tipo === 'error'" role="status">{{ mensaje.texto }} <button type="button" aria-label="Cerrar aviso" (click)="aviso.set(null)">×</button></div>
+    }
+
+    <section class="summary-strip">
+      <div><span class="summary-number">{{ asistencias().length }}</span><span class="summary-label">REGISTROS EN VISTA</span></div>
+      <div><span class="summary-number">{{ empleados().length }}</span><span class="summary-label">EMPLEADOS</span></div>
+      <div class="summary-note"><span class="status-dot"></span> Datos actualizados al consultar</div>
+    </section>
+
+    <section class="records-section">
+      <div class="section-heading"><div><p class="eyebrow">REGISTRO DIARIO</p><h2>Asistencias</h2></div></div>
+      <form class="filter-bar" [formGroup]="filtros" (ngSubmit)="buscar()">
+        <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" formControlName="busqueda" placeholder="Buscar código o empleado" aria-label="Buscar por código o nombre"></label>
+        <label class="date-filter"><span>Desde</span><input type="date" formControlName="fecha_inicio" aria-label="Fecha inicial"></label>
+        <label class="date-filter"><span>Hasta</span><input type="date" formControlName="fecha_fin" aria-label="Fecha final"></label>
+        <button class="button button-dark" type="submit">Filtrar <ng-icon name="lucideArrowRight" size="16" /></button>
+        <button class="button button-text" type="button" (click)="limpiarFiltros()">Limpiar</button>
+      </form>
+
+      <section class="table-frame rrhh-table-frame">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Empleado</th><th>Puesto</th><th>Fecha</th><th>Entrada</th><th>Estado</th><th>Salida</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>
+              @if (cargando()) {
+                <tr><td colspan="8" class="table-empty">Cargando asistencias…</td></tr>
+              } @else if (asistencias().length === 0) {
+                <tr><td colspan="8" class="table-empty">No hay marcaciones para los filtros seleccionados.</td></tr>
+              } @else {
+                @for (item of asistencias(); track item.id) {
+                  <tr>
+                    <td><strong class="employee-name">{{ item.nombre }}</strong><small class="employee-code">{{ item.codigo_empleado }}</small></td>
+                    <td>{{ item.nombre_puesto || '—' }}</td><td>{{ formatoFecha(item.fecha) }}</td><td>{{ hora(item.hora_entrada) }}</td>
+                    <td><span class="state-pill" [class.state-good]="item.estado_entrada === 'puntual'" [class.state-warn]="item.estado_entrada === 'atraso'">{{ etiquetaEstado(item.estado_entrada) }}</span></td>
+                    <td>{{ hora(item.hora_salida) }}</td>
+                    <td><span class="state-pill" [class.state-good]="item.estado_salida === 'normal'" [class.state-warn]="item.estado_salida === 'anticipada'">{{ etiquetaEstado(item.estado_salida) }}</span></td>
+                    <td><button class="small-action" type="button" title="Corregir marcación" aria-label="Corregir marcación" (click)="abrirCorreccion(item)"><ng-icon name="lucidePencil" size="16" /></button></td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="table-footer">{{ asistencias().length }} registros encontrados</footer>
+      </section>
+    </section>
+    <footer class="workspace-footer"><span>SIMET · RECURSOS HUMANOS</span><span>Las correcciones quedan registradas en auditoría</span></footer>
+  </main>
+</div>
+
+@if (modal() === 'correccion') {
+  <div class="modal-backdrop" (click)="cerrarModal()" (keydown.escape)="cerrarModal()">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="correction-title" (click)="$event.stopPropagation()">
+      <div class="modal-header"><div><p class="eyebrow">AUDITORÍA DE ASISTENCIA</p><h2 id="correction-title">Corrección manual</h2></div><button class="icon-button" type="button" aria-label="Cerrar" (click)="cerrarModal()"><ng-icon name="lucideX" size="17" /></button></div>
+      @if (seleccionada(); as item) { <p class="modal-context"><strong>{{ item.nombre }}</strong> · {{ formatoFecha(item.fecha) }} · {{ item.codigo_empleado }}</p> }
+      <form [formGroup]="correccionForm" (ngSubmit)="guardarCorreccion()">
+        <label for="campo-correccion">Marcación a corregir</label><select id="campo-correccion" formControlName="campo"><option value="hora_entrada">Hora de entrada</option><option value="hora_salida">Hora de salida</option></select>
+        <label for="hora-correccion">Nueva fecha y hora</label><input id="hora-correccion" type="datetime-local" formControlName="hora" required>
+        <label for="motivo-correccion">Motivo <span class="required-mark">OBLIGATORIO</span></label><textarea id="motivo-correccion" formControlName="motivo" rows="3" placeholder="Describe por qué se realiza el cambio" required></textarea>
+        @if (correccionForm.controls.motivo.touched && correccionForm.controls.motivo.invalid) { <span class="field-error">El motivo es obligatorio y debe tener al menos 4 caracteres.</span> }
+        <div class="modal-actions"><button class="button button-text" type="button" (click)="cerrarModal()">Cancelar</button><button class="button button-accent" type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar corrección' }}</button></div>
+      </form>
+    </section>
+  </div>
+}
+
+@if (modal() === 'incidencia') {
+  <div class="modal-backdrop" (click)="cerrarModal()" (keydown.escape)="cerrarModal()">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="incidence-title" (click)="$event.stopPropagation()">
+      <div class="modal-header"><div><p class="eyebrow">NOVEDAD DE PERSONAL</p><h2 id="incidence-title">Registrar incidencia</h2></div><button class="icon-button" type="button" aria-label="Cerrar" (click)="cerrarModal()"><ng-icon name="lucideX" size="17" /></button></div>
+      <form [formGroup]="incidenciaForm" (ngSubmit)="guardarIncidencia()">
+        <label for="empleado-incidencia">Empleado</label>
+        <select id="empleado-incidencia" formControlName="empleado_id" required>
+          <option value="">Selecciona un empleado</option>
+          @for (empleado of empleados(); track empleado.id) { <option [value]="empleado.id">{{ empleado.codigo_empleado }} · {{ empleado.nombre }}</option> }
+                  @for (empleado of empleados(); track empleado.id) { <option [value]="empleado.id">{{ empleado.codigo_empleado }} · {{ empleado.nombre }}</option> }
+        </select>
+        @if (empleados().length === 0) { <p class="helper-text">Carga una asistencia para disponer de empleados en la lista.</p> }
+        <div class="form-grid-two"><div><label for="inicio-incidencia">Desde</label><input id="inicio-incidencia" type="date" formControlName="fecha_inicio" required></div><div><label for="fin-incidencia">Hasta</label><input id="fin-incidencia" type="date" formControlName="fecha_fin" required></div></div>
+        <label for="tipo-incidencia">Tipo</label><select id="tipo-incidencia" formControlName="tipo"><option value="permiso_oficial">Permiso oficial</option><option value="ausencia_justificada">Ausencia justificada</option><option value="suspension">Suspensión</option><option value="vacaciones">Vacaciones</option></select>
+        <label for="motivo-incidencia">Motivo</label><textarea id="motivo-incidencia" formControlName="motivo" rows="3" placeholder="Detalle de la incidencia" required></textarea>
+        @if (incidenciaForm.controls.motivo.touched && incidenciaForm.controls.motivo.invalid) { <span class="field-error">El motivo es obligatorio.</span> }
+        <div class="modal-actions"><button class="button button-text" type="button" (click)="cerrarModal()">Cancelar</button><button class="button button-accent" type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar incidencia' }}</button></div>
+      </form>
+    </section>
+  </div>
+}

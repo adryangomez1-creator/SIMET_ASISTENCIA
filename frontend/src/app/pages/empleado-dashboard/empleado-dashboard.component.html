@@ -1,0 +1,56 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/dashboard"><span class="brand-mark">S</span><span>SIMET <small>ASISTENCIA</small></span></a>
+    <div class="topbar-actions">
+      @if (usuario && (usuario.rol_id === 2 || usuario.rol_id === 3)) {
+        <button class="button button-quiet" type="button" (click)="abrirRrhh()">Panel RRHH <span aria-hidden="true">↗</span></button>
+      }
+      <span class="user-chip"><span class="avatar">{{ usuario?.nombre?.slice(0, 1) || 'U' }}</span><span>{{ usuario?.nombre }}</span></span>
+      <button class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="salir()"><ng-icon name="lucideLogOut" size="17" /></button>
+    </div>
+  </header>
+
+  <main class="workspace employee-workspace">
+    <div class="page-heading">
+      <div><p class="eyebrow">PORTAL DEL EMPLEADO</p><h1>Mi jornada</h1><p class="subheading">Hola, {{ usuario?.nombre }}. Aquí tienes el estado de tu asistencia.</p></div>
+      <div class="date-stamp"><span class="status-dot"></span> {{ fechaActual() }}</div>
+    </div>
+
+    <section class="attendance-band">
+      <div class="clock-block"><p class="eyebrow">HORA DE GUATEMALA <span class="live-indicator">EN VIVO</span></p><div class="digital-clock">{{ horaActual() }}</div><p class="clock-caption">America / Guatemala · UTC−6</p></div>
+      <div class="attendance-action"><p>¿Listo para registrar?</p><span>Tu marcación se guardará con la hora oficial del servidor.</span><button class="button button-light" type="button" (click)="registrar()" [disabled]="marcando()">{{ marcando() ? 'Registrando…' : 'Registrar marcación' }} <ng-icon name="lucideArrowRight" size="17" /></button></div>
+    </section>
+
+    @if (aviso(); as mensaje) {
+      <div class="alert" [class.alert-success]="mensaje.tipo === 'success'" [class.alert-error]="mensaje.tipo === 'error'" role="status">{{ mensaje.texto }} <button type="button" aria-label="Cerrar aviso" (click)="aviso.set(null)">×</button></div>
+    }
+
+    <section class="section-heading"><div><p class="eyebrow">REGISTRO PERSONAL</p><h2>Historial de marcaciones</h2></div><span class="record-count">{{ historial().length }} registros</span></section>
+    <section class="table-frame">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Fecha</th><th>Entrada</th><th>Estado</th><th>Salida</th><th>Estado</th></tr></thead>
+          <tbody>
+            @if (cargando()) {
+              <tr><td colspan="5" class="table-empty">Cargando historial…</td></tr>
+            } @else if (historial().length === 0) {
+              <tr><td colspan="5" class="table-empty">Aún no hay marcaciones registradas.</td></tr>
+            } @else {
+              @for (item of historial(); track item.id) {
+                <tr>
+                  <td class="date-cell">{{ formatoFecha(item.fecha) }}</td>
+                  <td>{{ item.hora_entrada?.slice(11, 16) || '—' }}</td>
+                  <td><span class="state-pill" [class.state-good]="item.estado_entrada === 'puntual'" [class.state-warn]="item.estado_entrada === 'atraso'">{{ etiquetaEstado(item.estado_entrada) }}</span></td>
+                  <td>{{ item.hora_salida?.slice(11, 16) || '—' }}</td>
+                  <td><span class="state-pill" [class.state-good]="item.estado_salida === 'normal'" [class.state-warn]="item.estado_salida === 'anticipada'">{{ etiquetaEstado(item.estado_salida) }}</span></td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer class="table-footer">Se muestran tus últimas 30 marcaciones.</footer>
+    </section>
+    <footer class="workspace-footer"><span>SIMET · SISTEMA DE ASISTENCIA</span><span>Los registros se procesan en hora de Guatemala</span></footer>
+  </main>
+</div>

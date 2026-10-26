@@ -2,6 +2,7 @@ const express = require('express');
 const { verificarToken, permitirRoles } = require('../middlewares/authMiddleware');
 const {
   obtenerTodasAsistencias,
+  obtenerEmpleadosActivos,
   corregirMarcacion,
   registrarIncidencia,
   exportarReporteExcel
@@ -11,6 +12,7 @@ const router = express.Router();
 
 router.use(verificarToken, permitirRoles(2, 3));
 router.get('/asistencias', obtenerTodasAsistencias);
+router.get('/empleados', obtenerEmpleadosActivos);
 router.put('/corregir', corregirMarcacion);
 router.post('/incidencias', registrarIncidencia);
 router.get('/exportar-excel', exportarReporteExcel);

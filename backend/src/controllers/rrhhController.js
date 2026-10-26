@@ -25,7 +25,7 @@ function filtrosReporte(query) {
 }
 
 const consultaAsistencias = `
-  SELECT m.id, e.codigo_empleado, e.nombre, p.nombre_puesto, m.fecha,
+  SELECT m.id, e.id AS empleado_id, e.codigo_empleado, e.nombre, p.nombre_puesto, m.fecha,
          m.hora_entrada, m.hora_salida, m.estado_entrada, m.estado_salida
   FROM marcaciones m
   INNER JOIN empleados e ON e.id = m.empleado_id
@@ -40,6 +40,20 @@ async function obtenerTodasAsistencias(req, res, next) {
       filtros.parametros
     );
     return res.json({ asistencias });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function obtenerEmpleadosActivos(req, res, next) {
+  try {
+    const [empleados] = await pool.execute(
+      `SELECT id, codigo_empleado, nombre
+       FROM empleados
+       WHERE activo = 1
+       ORDER BY nombre ASC`
+    );
+    return res.json({ empleados });
   } catch (error) {
     return next(error);
   }
@@ -207,6 +221,7 @@ async function exportarReporteExcel(req, res, next) {
 
 module.exports = {
   obtenerTodasAsistencias,
+  obtenerEmpleadosActivos,
   corregirMarcacion,
   registrarIncidencia,
   exportarReporteExcel

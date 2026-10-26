@@ -1,1 +1,1 @@
-window.SIMET_API_URL = '/api';
+window.API_URL = 'https://simet-asistencia.onrender.com/api';

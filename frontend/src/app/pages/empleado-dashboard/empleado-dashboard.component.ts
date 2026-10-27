@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowRight, lucideLogOut } from '@ng-icons/lucide';
 import { interval } from 'rxjs';
@@ -19,6 +19,7 @@ export class EmpleadoDashboardComponent implements OnInit {
   private readonly asistencia = inject(AsistenciaService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly usuario = this.auth.getUsuario();
@@ -30,6 +31,9 @@ export class EmpleadoDashboardComponent implements OnInit {
   protected readonly aviso = signal<{ tipo: 'success' | 'error'; texto: string } | null>(null);
 
   ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('acceso') === 'denegado') {
+      this.aviso.set({ tipo: 'error', texto: 'Acceso denegado. Esta sección es exclusiva para administradores.' });
+    }
     this.actualizarReloj();
     interval(1000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.actualizarReloj());
     this.cargarHistorial();

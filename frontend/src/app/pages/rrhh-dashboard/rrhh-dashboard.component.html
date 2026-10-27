@@ -7,7 +7,7 @@
   <main class="workspace rrhh-workspace">
     <div class="page-heading rrhh-heading">
       <div><p class="eyebrow">ADMINISTRACIÓN / ASISTENCIA</p><h1>Control de personal</h1><p class="subheading">Consulta, corrige y documenta la jornada del equipo.</p></div>
-      <div class="heading-actions"><button class="button button-outline" type="button" (click)="abrirIncidencia()"><ng-icon name="lucidePlus" size="16" /> Nueva incidencia</button><button class="button button-accent" type="button" (click)="exportar()" [disabled]="exportando()"><ng-icon name="lucideArrowDownToLine" size="16" /> {{ exportando() ? 'Preparando…' : 'Exportar Excel' }}</button></div>
+      <div class="heading-actions">@if (usuario?.rol_id === 3) { <a class="button button-outline" routerLink="/admin/evaluaciones">Evaluaciones</a> }<button class="button button-outline" type="button" (click)="abrirIncidencia()"><ng-icon name="lucidePlus" size="16" /> Nueva incidencia</button><button class="button button-accent" type="button" (click)="exportar()" [disabled]="exportando()"><ng-icon name="lucideArrowDownToLine" size="16" /> {{ exportando() ? 'Preparando…' : 'Exportar Excel' }}</button></div>
     </div>
 
     @if (aviso(); as mensaje) {

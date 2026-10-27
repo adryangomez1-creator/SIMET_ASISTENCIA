@@ -1,0 +1,116 @@
+<div class="app-shell evaluation-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/rrhh"><span class="brand-mark">S</span><span>SIMET <small>ASISTENCIA</small></span></a>
+    <div class="topbar-actions"><span class="admin-label">MÓDULO ADMINISTRADOR</span><span class="user-chip"><span class="avatar avatar-admin">{{ usuario?.nombre?.slice(0, 1) || 'A' }}</span><span>{{ usuario?.nombre }}</span></span><button class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="salir()"><ng-icon name="lucideLogOut" size="17" /></button></div>
+  </header>
+
+  <main class="workspace evaluation-workspace">
+    <div class="evaluation-heading">
+      <div>
+        <p class="eyebrow">PERSONAS / DESARROLLO</p>
+        <h1>Evaluación de personal</h1>
+        <p class="subheading">Criterios específicos por puesto y seguimiento individual.</p>
+      </div>
+      <a class="button button-outline" routerLink="/rrhh"><ng-icon name="lucideArrowLeft" size="16" /> Volver a RR. HH.</a>
+    </div>
+
+    @if (aviso(); as mensaje) {
+      <div class="alert" [class.alert-success]="mensaje.tipo === 'success'" [class.alert-error]="mensaje.tipo === 'error'" role="status">{{ mensaje.texto }} <button type="button" aria-label="Cerrar aviso" (click)="aviso.set(null)">×</button></div>
+    }
+
+    <section class="evaluation-employee">
+      <div class="section-heading"><div><p class="eyebrow">01 / PERSONA</p><h2>Seleccionar empleado</h2></div></div>
+      <form [formGroup]="empleadoForm">
+        <label for="evaluacion-empleado">Empleado</label>
+        <select id="evaluacion-empleado" formControlName="empleado_id" (change)="seleccionarEmpleado()">
+          <option [ngValue]="null">{{ cargandoEmpleados() ? 'Cargando empleados…' : 'Selecciona un empleado' }}</option>
+          @for (persona of empleados(); track persona.id) {
+            <option [ngValue]="persona.id">{{ persona.codigo_empleado }} · {{ persona.nombre }}</option>
+          }
+        </select>
+      </form>
+      @if (empleado(); as persona) {
+        <dl class="employee-facts">
+          <div><dt>Puesto</dt><dd>{{ persona.nombre_puesto }}</dd></div>
+          <div><dt>Departamento</dt><dd>{{ persona.departamento }}</dd></div>
+          <div><dt>Código</dt><dd>{{ persona.codigo_empleado }}</dd></div>
+        </dl>
+      }
+    </section>
+
+    @if (cargandoCriterios()) {
+      <p class="evaluation-loading">Cargando criterios del puesto…</p>
+    } @else if (empleado() && criterios().length) {
+      <div class="evaluation-results" aria-live="polite">
+        <div><span class="eyebrow">PROMEDIO OPERATIVO</span><strong>{{ promedio('TECNICO') }}</strong><small>/ 5</small></div>
+        <div><span class="eyebrow">PROMEDIO PSICOMÉTRICO</span><strong>{{ promedio('PSICOMETRICO') }}</strong><small>/ 5</small></div>
+      </div>
+
+      <form class="evaluation-form" (ngSubmit)="guardar()">
+        <section class="evaluation-section">
+          <div class="section-heading"><div><p class="eyebrow">02 / DESEMPEÑO</p><h2>Criterios del puesto</h2></div><span class="scale-note">1 Bajo · 5 Destacado</span></div>
+          @for (criterio of criteriosPorCategoria('TECNICO'); track criterio.id; let index = $index) {
+            <article class="criterion-row">
+              <div class="criterion-question"><span class="criterion-index">{{ (index + 1).toString().padStart(2, '0') }}</span><label [for]="'criterio-' + criterio.id">{{ criterio.pregunta }}</label></div>
+              @if (criterio.tipo === 'ESCALA_1_5') {
+                <div class="rating-control" role="radiogroup" [attr.aria-label]="criterio.pregunta">
+                  @for (punto of [1, 2, 3, 4, 5]; track punto) {
+                    <label class="rating-option"><input type="radio" [name]="'criterio-' + criterio.id" [formControl]="controlRespuesta(criterio.id)" [value]="punto"><span>{{ punto }}</span></label>
+                  }
+                </div>
+              } @else if (criterio.tipo === 'TEXTO') {
+                <textarea [id]="'criterio-' + criterio.id" [formControl]="controlRespuesta(criterio.id)" rows="2" placeholder="Escribe la respuesta"></textarea>
+              }
+              <label class="observation-field">Observaciones <textarea [formControl]="controlObservaciones(criterio.id)" rows="2" placeholder="Opcional"></textarea></label>
+            </article>
+          }
+        </section>
+
+        <section class="evaluation-section psychometric-section">
+          <div class="section-heading"><div><p class="eyebrow">03 / AUTOPERCEPCIÓN</p><h2>Cuestionario de trabajo</h2></div><span class="scale-note">10 preguntas · respuesta única</span></div>
+          <p class="psychometric-note">Cuestionario orientativo para conversación y desarrollo; no constituye un diagnóstico psicológico ni una prueba clínica validada.</p>
+          @for (criterio of criteriosPorCategoria('PSICOMETRICO'); track criterio.id; let index = $index) {
+            <article class="criterion-row psychometric-row">
+              <div class="criterion-question"><span class="criterion-index">{{ (index + 1).toString().padStart(2, '0') }}</span><label [for]="'criterio-' + criterio.id">{{ criterio.pregunta }}</label></div>
+              @if (criterio.tipo === 'OPCION_MULTIPLE') {
+                <select [id]="'criterio-' + criterio.id" [formControl]="controlRespuesta(criterio.id)">
+                  <option [ngValue]="null">Selecciona una respuesta</option>
+                  @for (opcion of criterio.opciones || []; track opcion.value) {
+                    <option [ngValue]="opcion.value">{{ opcion.label }}</option>
+                  }
+                </select>
+              }
+              <label class="observation-field">Observaciones <textarea [formControl]="controlObservaciones(criterio.id)" rows="2" placeholder="Opcional"></textarea></label>
+            </article>
+          }
+        </section>
+
+        <div class="evaluation-submit"><span>Se requiere responder todos los criterios. Las observaciones son opcionales.</span><button class="button button-accent" type="submit" [disabled]="guardando() || respuestasForm.invalid"><ng-icon name="lucideSave" size="16" /> {{ guardando() ? 'Guardando…' : 'Guardar evaluación' }}</button></div>
+      </form>
+    }
+
+    @if (empleado()) {
+      <section class="history-section">
+        <div class="section-heading"><div><p class="eyebrow">SEGUIMIENTO</p><h2>Historial de evaluaciones</h2></div><span class="record-count">{{ historial().length }} registros</span></div>
+        @if (cargandoHistorial()) {
+          <p class="evaluation-loading">Cargando historial…</p>
+        } @else if (!historial().length) {
+          <p class="history-empty">Este empleado todavía no tiene evaluaciones.</p>
+        } @else {
+          @for (item of historial(); track item.id) {
+            <details class="history-item">
+              <summary><span><strong>{{ fecha(item.creado_en) }}</strong><small>{{ item.nombre_puesto }} · Evaluó {{ item.evaluador_nombre }}</small></span><span class="history-scores"><b>{{ puntuacion(item.promedio_tecnico) }}</b><small>Operativo</small><b>{{ puntuacion(item.promedio_psicometrico) }}</b><small>Psicométrico</small></span></summary>
+              <div class="history-answers">
+                @for (respuesta of item.respuestas; track respuesta.criterio_id) {
+                  <div><span>{{ respuesta.pregunta }}</span><strong>{{ respuesta.respuesta_texto || puntuacion(respuesta.puntuacion) }}</strong>@if (respuesta.observaciones) { <small>{{ respuesta.observaciones }}</small> }</div>
+                }
+              </div>
+            </details>
+          }
+        }
+      </section>
+    }
+
+    <footer class="workspace-footer"><span>SIMET · EVALUACIÓN DE PERSONAL</span><span>Acceso restringido a Jefatura autorizada</span></footer>
+  </main>
+</div>

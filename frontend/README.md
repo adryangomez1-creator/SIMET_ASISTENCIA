@@ -53,6 +53,10 @@ window.SIMET_API_URL = 'https://TU-SERVICIO.onrender.com/api';
 
 La API debe permitir en CORS el dominio de Vercel. El valor predeterminado `/api` sirve para desarrollo con proxy o para despliegues con proxy inverso.
 
+## Evaluaciones de personal
+
+Antes de desplegar el módulo de evaluaciones, selecciona `simet_asistencia` en MySQL Workbench/Aiven y ejecuta una vez el script `database/evaluaciones.sql`. El script reutiliza la tabla `puestos` existente, crea las tablas de criterios, evaluaciones y respuestas, y agrega criterios iniciales sin duplicarlos si se vuelve a ejecutar. El acceso a `/admin/evaluaciones` y a `/api/evaluaciones/*` está reservado al rol ID 3 (`Jefe Autorizado`).
+
 ## Validación
 
 ```powershell

@@ -22,6 +22,18 @@ function fechaHoraLocal() {
   };
 }
 
+function sumarMinutos(hora, minutos) {
+  const [horas, minutosHora, segundos] = hora.split(':').map(Number);
+  const totalSegundos = (horas * 3600 + minutosHora * 60 + segundos + minutos * 60) % 86400;
+  const horaLimite = Math.floor(totalSegundos / 3600);
+  const minutoLimite = Math.floor((totalSegundos % 3600) / 60);
+  const segundoLimite = totalSegundos % 60;
+
+  return [horaLimite, minutoLimite, segundoLimite]
+    .map((valor) => String(valor).padStart(2, '0'))
+    .join(':');
+}
+
 async function registrarMarcacion(req, res, next) {
   const empleadoId = req.usuario.id;
   const ahora = fechaHoraLocal();
@@ -51,7 +63,8 @@ async function registrarMarcacion(req, res, next) {
     );
 
     if (!marcaciones[0]) {
-      const estadoEntrada = ahora.hora <= String(empleados[0].hora_entrada) ? 'puntual' : 'atraso';
+      const limitePuntualidad = sumarMinutos(String(empleados[0].hora_entrada), 15);
+      const estadoEntrada = ahora.hora < limitePuntualidad ? 'puntual' : 'atraso';
       await connection.execute(
         `INSERT INTO marcaciones (empleado_id, fecha, hora_entrada, estado_entrada)
          VALUES (?, ?, ?, ?)`,

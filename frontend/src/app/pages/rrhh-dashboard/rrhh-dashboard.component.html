@@ -86,7 +86,6 @@
         <select id="empleado-incidencia" formControlName="empleado_id" required>
           <option value="">Selecciona un empleado</option>
           @for (empleado of empleados(); track empleado.id) { <option [value]="empleado.id">{{ empleado.codigo_empleado }} · {{ empleado.nombre }}</option> }
-                  @for (empleado of empleados(); track empleado.id) { <option [value]="empleado.id">{{ empleado.codigo_empleado }} · {{ empleado.nombre }}</option> }
         </select>
         @if (empleados().length === 0) { <p class="helper-text">Carga una asistencia para disponer de empleados en la lista.</p> }
         <div class="form-grid-two"><div><label for="inicio-incidencia">Desde</label><input id="inicio-incidencia" type="date" formControlName="fecha_inicio" required></div><div><label for="fin-incidencia">Hasta</label><input id="fin-incidencia" type="date" formControlName="fecha_fin" required></div></div>

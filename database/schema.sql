@@ -35,13 +35,13 @@ INSERT INTO puestos (codigo_abreviatura, nombre_puesto) VALUES
 CREATE TABLE horarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre_horario VARCHAR(50) NOT NULL,
-    hora_entrada TIME NOT NULL DEFAULT '08:00:00',
-    hora_salida TIME NOT NULL DEFAULT '17:00:00',
+    hora_entrada TIME NOT NULL DEFAULT '07:00:00',
+    hora_salida TIME NOT NULL DEFAULT '17:30:00',
     dias_laborales VARCHAR(100) NOT NULL DEFAULT 'Lunes,Martes,Miércoles,Jueves,Viernes'
 ) ENGINE=InnoDB;
 
 INSERT INTO horarios (nombre_horario, hora_entrada, hora_salida, dias_laborales)
-VALUES ('Estándar SIMET', '08:00:00', '17:00:00', 'Lunes,Martes,Miércoles,Jueves,Viernes');
+VALUES ('Estándar SIMET', '07:00:00', '17:30:00', 'Lunes,Martes,Miércoles,Jueves,Viernes');
 
 CREATE TABLE empleados (
     id INT AUTO_INCREMENT PRIMARY KEY,

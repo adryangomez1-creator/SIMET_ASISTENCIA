@@ -1,0 +1,36 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/dashboard"><span class="brand-mark">S</span><span>SIMET <small>ASISTENCIA</small></span></a>
+    <div class="topbar-actions"><span class="user-chip"><span class="avatar">{{ usuario?.nombre?.slice(0, 1) || 'U' }}</span><span>{{ usuario?.nombre }}</span></span><button class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="salir()"><ng-icon name="lucideLogOut" size="17" /></button></div>
+  </header>
+
+  <main class="workspace">
+    <div class="page-heading">
+      <div><p class="eyebrow">AMBIENTE Y ESPACIO LABORAL</p><h1>Buzón de sugerencias y quejas</h1><p class="subheading">Comparte una inquietud, queja o idea para mejorar el espacio de trabajo.</p></div>
+      <a class="button button-outline" routerLink="/dashboard">Volver al inicio</a>
+    </div>
+
+    <div class="notice-card"><strong>Tu mensaje es confidencial</strong><p>Solo administración podrá consultar los mensajes. Si eliges enviarlo anónimamente, no se guardará tu identidad ni será visible para los administradores.</p></div>
+    @if (aviso(); as mensaje) {
+      <div class="alert" [class.alert-success]="mensaje.tipo === 'success'" [class.alert-error]="mensaje.tipo === 'error'" role="status">{{ mensaje.texto }}</div>
+    }
+
+    <form class="feedback-form" [formGroup]="formulario" (ngSubmit)="enviar()">
+      <label for="tipo-sugerencia">Tipo de mensaje</label>
+      <select id="tipo-sugerencia" formControlName="tipo">
+        <option value="SUGERENCIA">Sugerencia</option>
+        <option value="QUEJA">Queja</option>
+        <option value="OTRO">Otro</option>
+      </select>
+
+      <label for="contenido-sugerencia">Mensaje</label>
+      <textarea id="contenido-sugerencia" formControlName="contenido" rows="7" maxlength="5000" placeholder="Cuéntanos qué podemos mejorar…" required></textarea>
+      @if (formulario.controls.contenido.touched && formulario.controls.contenido.invalid) { <small class="field-error">Escribe al menos 5 caracteres y no más de 5000.</small> }
+
+      <label class="anonymous-choice"><input type="checkbox" formControlName="anonima"><span>Enviar anónimamente</span></label>
+      <div class="evaluation-submit"><span>La identidad no se guarda si marcas la opción anónima.</span><button class="button button-accent" type="submit" [disabled]="enviando()">{{ enviando() ? 'Enviando…' : 'Enviar mensaje' }}</button></div>
+    </form>
+
+    <footer class="workspace-footer"><span>SIMET · AMBIENTE LABORAL</span><span>Tu opinión ayuda a mejorar</span></footer>
+  </main>
+</div>

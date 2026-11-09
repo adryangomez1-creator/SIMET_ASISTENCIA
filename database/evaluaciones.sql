@@ -46,6 +46,32 @@ CREATE TABLE IF NOT EXISTS eval_respuestas (
     CONSTRAINT chk_eval_puntuacion CHECK (puntuacion IS NULL OR puntuacion BETWEEN 1 AND 5)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS eval_revisiones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    evaluacion_id INT NOT NULL UNIQUE,
+    revisado_por INT NOT NULL,
+    calificacion TINYINT UNSIGNED NOT NULL,
+    comentario_revision TEXT NOT NULL,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_eval_revision_calificacion CHECK (calificacion BETWEEN 1 AND 5),
+    CONSTRAINT fk_eval_revision_evaluacion
+      FOREIGN KEY (evaluacion_id) REFERENCES eval_evaluaciones(id) ON DELETE CASCADE,
+    CONSTRAINT fk_eval_revision_revisor
+      FOREIGN KEY (revisado_por) REFERENCES empleados(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS sugerencias (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    empleado_id INT NULL,
+    tipo ENUM('SUGERENCIA', 'QUEJA', 'OTRO') NOT NULL,
+    contenido TEXT NOT NULL,
+    anonima TINYINT(1) NOT NULL DEFAULT 0,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY ix_sugerencias_fecha (creado_en),
+    CONSTRAINT fk_sugerencias_empleado
+      FOREIGN KEY (empleado_id) REFERENCES empleados(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 INSERT INTO eval_criterios (puesto_id, categoria, pregunta, tipo)
 SELECT p.id, 'TECNICO', q.pregunta, 'ESCALA_1_5'
 FROM puestos p
@@ -123,4 +149,36 @@ CROSS JOIN (
 WHERE NOT EXISTS (
     SELECT 1 FROM eval_criterios c
     WHERE c.puesto_id = p.id AND c.categoria = 'PSICOMETRICO' AND c.pregunta = q.pregunta
+);
+
+INSERT INTO eval_criterios (puesto_id, categoria, pregunta, tipo)
+SELECT p.id, 'CONOCIMIENTO', q.pregunta, 'TEXTO'
+FROM puestos p
+JOIN (
+    SELECT 'GG' AS codigo, '¿Qué información consultarías para definir prioridades y dar seguimiento a los objetivos de tu área?' AS pregunta
+    UNION ALL SELECT 'DC', '¿Qué revisarías para comprobar que un proceso se realizó conforme a los procedimientos establecidos?'
+    UNION ALL SELECT 'MET', '¿Qué pasos seguirías para preparar, verificar y registrar una medición de manera confiable?'
+    UNION ALL SELECT 'TEC', '¿Cómo identificarías las posibles causas de una falla antes de intervenir un equipo?'
+    UNION ALL SELECT 'AUXLAB', '¿Cómo prepararías el área, los instrumentos y los registros para apoyar una actividad de laboratorio?'
+    UNION ALL SELECT 'JM', '¿Cómo organizarías el diagnóstico y la asignación de una reparación?'
+    UNION ALL SELECT 'AUXTEC', '¿Qué revisarías antes de entregar un equipo para la siguiente etapa del servicio?'
+    UNION ALL SELECT 'AC', '¿Cómo organizarías y verificarías la información antes de preparar una cotización?'
+    UNION ALL SELECT 'AUXC', '¿Qué revisarías para comprobar que un documento de registro contable esté completo?'
+    UNION ALL SELECT 'VEN', '¿Qué información confirmarías antes de recomendar un producto o servicio a un cliente?'
+) q ON q.codigo = p.codigo_abreviatura
+WHERE NOT EXISTS (
+    SELECT 1 FROM eval_criterios c
+    WHERE c.puesto_id = p.id AND c.categoria = 'CONOCIMIENTO' AND c.pregunta = q.pregunta
+);
+
+INSERT INTO eval_criterios (puesto_id, categoria, pregunta, tipo)
+SELECT p.id, 'CONOCIMIENTO', q.pregunta, 'TEXTO'
+FROM puestos p
+CROSS JOIN (
+    SELECT 'Describe cómo organizas una tarea para cumplirla a tiempo y con calidad.' AS pregunta
+    UNION ALL SELECT '¿Qué harías si detectas un error o una condición insegura durante tu jornada?'
+) q
+WHERE NOT EXISTS (
+    SELECT 1 FROM eval_criterios c
+    WHERE c.puesto_id = p.id AND c.categoria = 'CONOCIMIENTO' AND c.pregunta = q.pregunta
 );

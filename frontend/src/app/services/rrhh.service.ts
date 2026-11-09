@@ -25,11 +25,14 @@ export interface DatosIncidencia {
   motivo: string;
 }
 
-  export interface EmpleadoRrhh {
-    id: number;
-    codigo_empleado: string;
-    nombre: string;
-  }
+export interface EmpleadoRrhh {
+  id: number;
+  codigo_empleado: string;
+  nombre: string;
+  nombre_puesto: string;
+  nombre_rol: string;
+  activo: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class RrhhService {
@@ -44,9 +47,9 @@ export class RrhhService {
     return this.http.get<{ asistencias: Marcacion[] }>(`${this.baseUrl}/asistencias`, { params });
   }
 
-      obtenerEmpleados(): Observable<{ empleados: EmpleadoRrhh[] }> {
-        return this.http.get<{ empleados: EmpleadoRrhh[] }>(`${this.baseUrl}/empleados`);
-      }
+  obtenerEmpleados(): Observable<{ empleados: EmpleadoRrhh[] }> {
+    return this.http.get<{ empleados: EmpleadoRrhh[] }>(`${this.baseUrl}/empleados`);
+  }
 
   corregirMarcacion(datos: DatosCorreccion): Observable<{ mensaje: string }> {
     return this.http.put<{ mensaje: string }>(`${this.baseUrl}/corregir`, datos);

@@ -48,6 +48,6 @@ export class LoginComponent {
   }
 
   private irAlPanel(): void {
-    void this.router.navigate([this.auth.hasRrhhRole() ? '/rrhh' : '/dashboard']);
+    void this.router.navigate(['/dashboard']);
   }
 }

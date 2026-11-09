@@ -1,0 +1,36 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/dashboard"><span class="brand-mark">S</span><span>SIMET <small>ASISTENCIA</small></span></a>
+    <div class="topbar-actions"><span class="admin-label">SOLO ADMINISTRADORES</span><span class="user-chip"><span class="avatar avatar-admin">{{ usuario?.nombre?.slice(0, 1) || 'A' }}</span><span>{{ usuario?.nombre }}</span></span><button class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="salir()"><ng-icon name="lucideLogOut" size="17" /></button></div>
+  </header>
+
+  <main class="workspace">
+    <div class="page-heading">
+      <div><p class="eyebrow">AMBIENTE Y ESPACIO LABORAL</p><h1>Sugerencias y quejas</h1><p class="subheading">Mensajes visibles únicamente para los administradores.</p></div>
+      <a class="button button-outline" routerLink="/dashboard">Volver al panel</a>
+    </div>
+
+    @if (aviso(); as mensaje) {
+      <div class="alert alert-error" role="status">{{ mensaje.texto }}</div>
+    }
+
+    <section class="section-heading"><div><p class="eyebrow">BUZÓN INTERNO</p><h2>Mensajes recibidos</h2></div><span class="record-count">{{ sugerencias().length }} mensajes</span></section>
+    @if (cargando()) {
+      <p class="module-empty">Cargando mensajes…</p>
+    } @else if (!sugerencias().length) {
+      <p class="module-empty">Todavía no hay sugerencias o quejas.</p>
+    } @else {
+      <div class="feedback-list">
+        @for (mensaje of sugerencias(); track mensaje.id) {
+          <article class="feedback-item">
+            <header><span class="state-pill" [class.state-warn]="mensaje.tipo === 'QUEJA'">{{ tipo(mensaje.tipo) }}</span><time>{{ fecha(mensaje.creado_en) }}</time></header>
+            <p>{{ mensaje.contenido }}</p>
+            <footer>{{ anonima(mensaje.anonima) ? 'Enviado anónimamente' : 'Remitente: ' + (mensaje.remitente || 'No disponible') }}</footer>
+          </article>
+        }
+      </div>
+    }
+
+    <footer class="workspace-footer"><span>SIMET · BUZÓN DE PERSONAL</span><span>Confidencial · Acceso restringido</span></footer>
+  </main>
+</div>

@@ -1,23 +1,20 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { FormBuilder, FormControl, FormRecord, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowLeft, lucideLogOut, lucideSave } from '@ng-icons/lucide';
+import { AuthService } from '../../services/auth.service';
 import {
   CriterioEvaluacion,
   EmpleadoEvaluacion,
   EvaluacionHistorial,
   EvaluacionesService,
-  RespuestaEvaluacion,
+  PuestoEvaluacion,
 } from '../../services/evaluaciones.service';
-import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-evaluacion-personal',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, NgIcon],
-  providers: [provideIcons({ lucideArrowLeft, lucideLogOut, lucideSave })],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './evaluacion-personal.component.html',
   styleUrl: './evaluacion-personal.component.css',
 })
@@ -29,19 +26,22 @@ export class EvaluacionPersonalComponent implements OnInit {
   protected readonly usuario = this.auth.getUsuario();
   protected readonly empleados = signal<EmpleadoEvaluacion[]>([]);
   protected readonly empleado = signal<EmpleadoEvaluacion | null>(null);
+  protected readonly puestos = signal<PuestoEvaluacion[]>([]);
+  protected readonly puestoId = signal<number | null>(null);
   protected readonly criterios = signal<CriterioEvaluacion[]>([]);
   protected readonly historial = signal<EvaluacionHistorial[]>([]);
+  protected readonly comentariosRevision: Record<number, string> = {};
+  protected readonly calificacionesRevision: Record<number, number | ''> = {};
+  protected readonly criterioEditando = signal<number | null>(null);
   protected readonly cargandoEmpleados = signal(true);
   protected readonly cargandoCriterios = signal(false);
   protected readonly cargandoHistorial = signal(false);
   protected readonly guardando = signal(false);
   protected readonly aviso = signal<{ tipo: 'success' | 'error'; texto: string } | null>(null);
 
-  protected readonly empleadoForm = this.formBuilder.group({
-    empleado_id: this.formBuilder.control<number | null>(null, Validators.required),
+  protected readonly preguntaForm = this.formBuilder.nonNullable.group({
+    pregunta: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(500)]],
   });
-  protected readonly respuestasForm = new FormRecord<FormControl<number | string | null>>({});
-  protected readonly observacionesForm = new FormRecord<FormControl<string>>({});
 
   ngOnInit(): void {
     this.evaluacionesApi.obtenerEmpleados().subscribe({
@@ -54,38 +54,37 @@ export class EvaluacionPersonalComponent implements OnInit {
         this.mostrarError(error, 'No se pudieron cargar los empleados.');
       },
     });
+
+    this.evaluacionesApi.obtenerPuestos().subscribe({
+      next: ({ puestos }) => {
+        this.puestos.set(puestos);
+        if (puestos.length) {
+          this.puestoId.set(puestos[0].id);
+          this.cargarCriterios(puestos[0].id);
+        }
+      },
+      error: (error: HttpErrorResponse) => this.mostrarError(error, 'No se pudieron cargar los puestos.'),
+    });
   }
 
-  protected seleccionarEmpleado(): void {
-    const empleadoId = this.empleadoForm.controls.empleado_id.value;
+  protected seleccionarEmpleado(event: Event): void {
+    const empleadoId = Number((event.target as HTMLSelectElement).value);
     const seleccionado = this.empleados().find((item) => item.id === empleadoId) || null;
     this.empleado.set(seleccionado);
-    this.criterios.set([]);
     this.historial.set([]);
-    this.limpiarRespuestas();
     this.aviso.set(null);
     if (!seleccionado) return;
-
-    this.cargandoCriterios.set(true);
-    this.evaluacionesApi.obtenerCriterios(seleccionado.puesto_id).subscribe({
-      next: ({ criterios }) => {
-        this.criterios.set(criterios);
-        for (const criterio of criterios) {
-          this.respuestasForm.addControl(String(criterio.id), new FormControl<number | string | null>(null, Validators.required));
-          this.observacionesForm.addControl(String(criterio.id), new FormControl('', { nonNullable: true }));
-        }
-        this.cargandoCriterios.set(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.cargandoCriterios.set(false);
-        this.mostrarError(error, 'No se pudieron cargar los criterios del puesto.');
-      },
-    });
 
     this.cargandoHistorial.set(true);
     this.evaluacionesApi.obtenerHistorial(seleccionado.id).subscribe({
       next: ({ evaluaciones }) => {
         this.historial.set(evaluaciones);
+        for (const evaluacion of evaluaciones) {
+          this.comentariosRevision[evaluacion.id] = evaluacion.comentario_revision || '';
+          this.calificacionesRevision[evaluacion.id] = evaluacion.calificacion_revision
+            ? Number(evaluacion.calificacion_revision)
+            : '';
+        }
         this.cargandoHistorial.set(false);
       },
       error: (error: HttpErrorResponse) => {
@@ -95,61 +94,85 @@ export class EvaluacionPersonalComponent implements OnInit {
     });
   }
 
-  protected controlRespuesta(criterioId: number): FormControl<number | string | null> {
-    return this.respuestasForm.controls[String(criterioId)];
+  protected seleccionarPuesto(event: Event): void {
+    const puestoId = Number((event.target as HTMLSelectElement).value);
+    this.puestoId.set(puestoId || null);
+    this.criterioEditando.set(null);
+    this.preguntaForm.reset({ pregunta: '' });
+    if (puestoId) this.cargarCriterios(puestoId);
   }
 
-  protected controlObservaciones(criterioId: number): FormControl<string> {
-    return this.observacionesForm.controls[String(criterioId)];
+  protected editarCriterio(criterio: CriterioEvaluacion): void {
+    this.criterioEditando.set(criterio.id);
+    this.preguntaForm.setValue({ pregunta: criterio.pregunta });
+    this.aviso.set(null);
   }
 
-  protected criteriosPorCategoria(categoria: string): CriterioEvaluacion[] {
-    return this.criterios().filter((criterio) => criterio.categoria === categoria);
+  protected cancelarEdicion(): void {
+    this.criterioEditando.set(null);
+    this.preguntaForm.reset({ pregunta: '' });
   }
 
-  protected promedio(categoria: string): string {
-    const puntuaciones = this.criteriosPorCategoria(categoria)
-      .map((criterio) => Number(this.respuestasForm.controls[String(criterio.id)]?.value))
-      .filter((valor) => Number.isFinite(valor) && valor >= 1 && valor <= 5);
-    if (!puntuaciones.length) return '—';
-    return (puntuaciones.reduce((total, valor) => total + valor, 0) / puntuaciones.length).toFixed(2);
-  }
-
-  protected guardar(): void {
-    this.empleadoForm.markAllAsTouched();
-    this.respuestasForm.markAllAsTouched();
-    const seleccionado = this.empleado();
-    if (!seleccionado || !this.criterios().length || this.respuestasForm.invalid || this.guardando()) return;
-
-    const respuestas: RespuestaEvaluacion[] = this.criterios().map((criterio) => {
-      const valor = this.controlRespuesta(criterio.id).value;
-      return {
-        criterio_id: criterio.id,
-        puntuacion: criterio.tipo === 'TEXTO' ? null : Number(valor),
-        respuesta_texto: criterio.tipo === 'TEXTO' ? String(valor || '').trim() : null,
-        observaciones: this.controlObservaciones(criterio.id).value.trim(),
-      };
-    });
+  protected guardarCriterio(): void {
+    this.preguntaForm.markAllAsTouched();
+    const puestoId = this.puestoId();
+    const pregunta = this.preguntaForm.controls.pregunta.value.trim();
+    const criterioId = this.criterioEditando();
+    if (this.preguntaForm.invalid || !puestoId || this.guardando()) return;
 
     this.guardando.set(true);
-    this.evaluacionesApi.guardar({
-      empleado_id: seleccionado.id,
-      puesto_id: seleccionado.puesto_id,
-      respuestas,
-    }).subscribe({
+    const solicitud = criterioId
+      ? this.evaluacionesApi.actualizarCriterio(criterioId, pregunta)
+      : this.evaluacionesApi.crearCriterio(puestoId, pregunta);
+    solicitud.subscribe({
       next: ({ mensaje }) => {
         this.aviso.set({ tipo: 'success', texto: mensaje });
         this.guardando.set(false);
-        this.limpiarRespuestas();
-        for (const criterio of this.criterios()) {
-          this.respuestasForm.addControl(String(criterio.id), new FormControl<number | string | null>(null, Validators.required));
-          this.observacionesForm.addControl(String(criterio.id), new FormControl('', { nonNullable: true }));
-        }
-        this.evaluacionesApi.obtenerHistorial(seleccionado.id).subscribe({
-          next: ({ evaluaciones }) => this.historial.set(evaluaciones),
-        });
+        this.cancelarEdicion();
+        this.cargarCriterios(puestoId);
       },
-      error: (error: HttpErrorResponse) => this.mostrarError(error, 'No fue posible guardar la evaluación.'),
+      error: (error: HttpErrorResponse) => this.mostrarError(error, 'No fue posible guardar la pregunta.'),
+    });
+  }
+
+  protected eliminarCriterio(criterio: CriterioEvaluacion): void {
+    if (!globalThis.confirm(`¿Eliminar la pregunta "${criterio.pregunta}"?`)) return;
+    this.evaluacionesApi.eliminarCriterio(criterio.id).subscribe({
+      next: ({ mensaje }) => {
+        this.aviso.set({ tipo: 'success', texto: mensaje });
+        const puestoId = this.puestoId();
+        if (puestoId) this.cargarCriterios(puestoId);
+      },
+      error: (error: HttpErrorResponse) => this.mostrarError(error, 'No fue posible eliminar la pregunta.'),
+    });
+  }
+
+  protected capturarRevision(evaluacionId: number, event: Event): void {
+    this.comentariosRevision[evaluacionId] = (event.target as HTMLTextAreaElement).value;
+  }
+
+  protected capturarCalificacion(evaluacionId: number, event: Event): void {
+    const value = Number((event.target as HTMLSelectElement).value);
+    this.calificacionesRevision[evaluacionId] = value || '';
+  }
+
+  protected guardarRevision(evaluacion: EvaluacionHistorial): void {
+    const comentario = (this.comentariosRevision[evaluacion.id] || '').trim();
+    const calificacion = this.calificacionesRevision[evaluacion.id];
+    if (!comentario || !calificacion) {
+      this.aviso.set({ tipo: 'error', texto: 'Selecciona una calificación y escribe una revisión antes de guardarla.' });
+      return;
+    }
+
+    this.guardando.set(true);
+    this.evaluacionesApi.guardarRevision(evaluacion.id, calificacion, comentario).subscribe({
+      next: ({ mensaje }) => {
+        this.aviso.set({ tipo: 'success', texto: mensaje });
+        this.guardando.set(false);
+        const empleadoId = this.empleado()?.id;
+        if (empleadoId) this.recargarHistorial(empleadoId);
+      },
+      error: (error: HttpErrorResponse) => this.mostrarError(error, 'No fue posible guardar la revisión.'),
     });
   }
 
@@ -161,17 +184,38 @@ export class EvaluacionPersonalComponent implements OnInit {
     });
   }
 
-  protected puntuacion(value: number | string | null): string {
-    return value === null ? '—' : Number(value).toFixed(2);
-  }
-
   protected salir(): void {
     this.auth.logout();
   }
 
-  private limpiarRespuestas(): void {
-    for (const id of Object.keys(this.respuestasForm.controls)) this.respuestasForm.removeControl(id);
-    for (const id of Object.keys(this.observacionesForm.controls)) this.observacionesForm.removeControl(id);
+  private cargarCriterios(puestoId: number): void {
+    this.cargandoCriterios.set(true);
+    this.evaluacionesApi.obtenerCriterios(puestoId).subscribe({
+      next: ({ criterios }) => {
+        this.criterios.set(criterios);
+        this.cargandoCriterios.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.criterios.set([]);
+        this.cargandoCriterios.set(false);
+        this.mostrarError(error, 'No se pudieron cargar las preguntas del puesto.');
+      },
+    });
+  }
+
+  private recargarHistorial(empleadoId: number): void {
+    this.evaluacionesApi.obtenerHistorial(empleadoId).subscribe({
+      next: ({ evaluaciones }) => {
+        this.historial.set(evaluaciones);
+        for (const evaluacion of evaluaciones) {
+          this.comentariosRevision[evaluacion.id] = evaluacion.comentario_revision || '';
+          this.calificacionesRevision[evaluacion.id] = evaluacion.calificacion_revision
+            ? Number(evaluacion.calificacion_revision)
+            : '';
+        }
+      },
+      error: (error: HttpErrorResponse) => this.mostrarError(error, 'No se pudo actualizar el historial.'),
+    });
   }
 
   private mostrarError(error: HttpErrorResponse, respaldo: string): void {

@@ -6,6 +6,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const asistenciaRoutes = require('./src/routes/asistenciaRoutes');
 const rrhhRoutes = require('./src/routes/rrhhRoutes');
 const evaluacionesRoutes = require('./src/routes/evaluacionesRoutes');
+const sugerenciasRoutes = require('./src/routes/sugerenciasRoutes');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/asistencia', asistenciaRoutes);
 app.use('/api/rrhh', rrhhRoutes);
 app.use('/api/evaluaciones', evaluacionesRoutes);
+app.use('/api/sugerencias', sugerenciasRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ mensaje: 'Ruta no encontrada.' });

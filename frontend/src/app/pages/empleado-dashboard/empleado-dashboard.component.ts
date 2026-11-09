@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowRight, lucideLogOut } from '@ng-icons/lucide';
 import { interval } from 'rxjs';
@@ -18,11 +18,11 @@ import { AuthService } from '../../services/auth.service';
 export class EmpleadoDashboardComponent implements OnInit {
   private readonly asistencia = inject(AsistenciaService);
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly usuario = this.auth.getUsuario();
+  protected readonly esAdministrador = this.auth.hasRrhhRole();
   protected readonly horaActual = signal('');
   protected readonly fechaActual = signal('');
   protected readonly historial = signal<Marcacion[]>([]);
@@ -60,10 +60,6 @@ export class EmpleadoDashboardComponent implements OnInit {
 
   protected salir(): void {
     this.auth.logout();
-  }
-
-  protected abrirRrhh(): void {
-    void this.router.navigate(['/rrhh']);
   }
 
   protected etiquetaEstado(estado: string | null): string {

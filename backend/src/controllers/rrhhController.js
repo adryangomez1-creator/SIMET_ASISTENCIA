@@ -48,10 +48,13 @@ async function obtenerTodasAsistencias(req, res, next) {
 async function obtenerEmpleadosActivos(req, res, next) {
   try {
     const [empleados] = await pool.execute(
-      `SELECT id, codigo_empleado, nombre
-       FROM empleados
-       WHERE activo = 1
-       ORDER BY nombre ASC`
+      `SELECT e.id, e.codigo_empleado, e.nombre, e.activo,
+              p.nombre_puesto, r.nombre AS nombre_rol
+       FROM empleados e
+       INNER JOIN puestos p ON p.id = e.puesto_id
+       INNER JOIN roles r ON r.id = e.rol_id
+       WHERE e.activo = 1
+       ORDER BY e.nombre ASC`
     );
     return res.json({ empleados });
   } catch (error) {

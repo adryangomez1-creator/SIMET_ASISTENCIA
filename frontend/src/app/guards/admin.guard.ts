@@ -7,7 +7,7 @@ export const adminGuard: CanActivateFn = () => {
   const router = inject(Router);
 
   if (!auth.isAuthenticated()) return router.createUrlTree(['/login']);
-  return Number(auth.getPayload()?.rol_id ?? auth.getUsuario()?.rol_id) === 3
+  return auth.hasRrhhRole()
     ? true
     : router.createUrlTree(['/dashboard'], { queryParams: { acceso: 'denegado' } });
 };

@@ -1,0 +1,38 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/dashboard"><span class="brand-mark">S</span><span>SIMET <small>ASISTENCIA</small></span></a>
+    <div class="topbar-actions"><span class="user-chip"><span class="avatar">{{ usuario?.nombre?.slice(0, 1) || 'U' }}</span><span>{{ usuario?.nombre }}</span></span><button class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="salir()"><ng-icon name="lucideLogOut" size="17" /></button></div>
+  </header>
+
+  <main class="workspace">
+    <div class="page-heading">
+      <div><p class="eyebrow">DESARROLLO PERSONAL</p><h1>Evaluación de conocimiento</h1><p class="subheading">Preguntas generales para tu puesto: {{ puesto() || 'cargando…' }}.</p></div>
+      <a class="button button-outline" routerLink="/dashboard">Volver al inicio</a>
+    </div>
+
+    <div class="notice-card"><strong>Privacidad de tus respuestas</strong><p>Solo los administradores podrán consultar tus respuestas y revisarlas. No podrás ver las respuestas ni la revisión administrativa desde tu cuenta.</p></div>
+    @if (aviso(); as mensaje) {
+      <div class="alert" [class.alert-success]="mensaje.tipo === 'success'" [class.alert-error]="mensaje.tipo === 'error'" role="status">{{ mensaje.texto }}</div>
+    }
+
+    @if (cargando()) {
+      <p class="module-empty">Cargando preguntas…</p>
+    } @else if (enviada()) {
+      <section class="module-empty"><h2>Evaluación enviada</h2><p>Gracias por completar la evaluación. Administración podrá revisar tus respuestas.</p></section>
+    } @else if (criterios().length) {
+      <form class="questionnaire" [formGroup]="respuestas" (ngSubmit)="enviar()">
+        @for (criterio of criterios(); track criterio.id; let index = $index) {
+          <label class="knowledge-question" [for]="'respuesta-' + criterio.id">
+            <span class="module-kicker">PREGUNTA {{ index + 1 }}</span>
+            <strong>{{ criterio.pregunta }}</strong>
+            <textarea [id]="'respuesta-' + criterio.id" [formControl]="control(criterio.id)" rows="4" maxlength="5000" placeholder="Escribe tu respuesta" required></textarea>
+            @if (control(criterio.id).touched && control(criterio.id).invalid) { <small class="field-error">La respuesta es obligatoria y no debe superar 5000 caracteres.</small> }
+          </label>
+        }
+        <div class="evaluation-submit"><span>Las respuestas enviadas no se muestran en este portal.</span><button class="button button-accent" type="submit" [disabled]="guardando()">{{ guardando() ? 'Enviando…' : 'Enviar evaluación' }}</button></div>
+      </form>
+    }
+
+    <footer class="workspace-footer"><span>SIMET · DESARROLLO DEL EQUIPO</span><span>Uso interno de la organización</span></footer>
+  </main>
+</div>

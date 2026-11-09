@@ -2,19 +2,48 @@
   <header class="topbar">
     <a class="brand" routerLink="/dashboard"><span class="brand-mark">S</span><span>SIMET <small>ASISTENCIA</small></span></a>
     <div class="topbar-actions">
-      @if (usuario && (usuario.rol_id === 2 || usuario.rol_id === 3)) {
-        <button class="button button-quiet" type="button" (click)="abrirRrhh()">Panel RRHH <span aria-hidden="true">↗</span></button>
-      }
       <span class="user-chip"><span class="avatar">{{ usuario?.nombre?.slice(0, 1) || 'U' }}</span><span>{{ usuario?.nombre }}</span></span>
       <button class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="salir()"><ng-icon name="lucideLogOut" size="17" /></button>
     </div>
   </header>
 
   <main class="workspace employee-workspace">
-    <div class="page-heading">
-      <div><p class="eyebrow">PORTAL DEL EMPLEADO</p><h1>Mi jornada</h1><p class="subheading">Hola, {{ usuario?.nombre }}. Aquí tienes el estado de tu asistencia.</p></div>
+    <div class="page-heading" [class.admin-page-heading]="esAdministrador">
+      <div><p class="eyebrow">{{ esAdministrador ? 'SIMET / ADMINISTRACIÓN' : 'PORTAL DEL EMPLEADO' }}</p><h1>{{ esAdministrador ? 'Panel de administración' : 'Mi jornada' }}</h1><p class="subheading">Hola, {{ usuario?.nombre }}. {{ esAdministrador ? 'Selecciona el área que deseas gestionar.' : 'Aquí tienes el estado de tu asistencia.' }}</p></div>
       <div class="date-stamp"><span class="status-dot"></span> {{ fechaActual() }}</div>
     </div>
+
+    @if (esAdministrador) {
+      <section class="module-grid admin-module-grid" aria-label="Módulos de administración">
+        <a class="module-card module-card-attendance" routerLink="/rrhh">
+          <span class="module-icon" aria-hidden="true">01</span><span class="module-kicker">OPERACIÓN DIARIA</span>
+          <h2>Control de asistencia</h2><p>Consulta marcaciones, gestiona incidencias y exporta reportes.</p><span class="module-link">Ingresar al módulo <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="module-card module-card-evaluation" routerLink="/admin/evaluaciones">
+          <span class="module-icon" aria-hidden="true">02</span><span class="module-kicker">DESARROLLO DEL EQUIPO</span>
+          <h2>Evaluación de personal</h2><p>Revisa respuestas y administra preguntas de conocimiento por puesto.</p><span class="module-link">Ingresar al módulo <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="module-card module-card-feedback" routerLink="/admin/sugerencias">
+          <span class="module-icon" aria-hidden="true">03</span><span class="module-kicker">AMBIENTE LABORAL</span>
+          <h2>Sugerencias y quejas</h2><p>Consulta los mensajes enviados por el personal, incluso los anónimos.</p><span class="module-link">Ingresar al módulo <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="module-card module-card-people" routerLink="/admin/empleados">
+          <span class="module-icon" aria-hidden="true">04</span><span class="module-kicker">DIRECTORIO SIMET</span>
+          <h2>Gestión de empleados</h2><p>Consulta los datos y puestos del personal activo.</p><span class="module-link">Ingresar al módulo <span aria-hidden="true">→</span></span>
+        </a>
+      </section>
+    } @else {
+      <section class="module-grid employee-module-grid" aria-label="Otros módulos">
+        <a class="module-card module-card-evaluation" routerLink="/mi-evaluacion">
+          <span class="module-kicker">DESARROLLO PERSONAL</span><h2>Evaluación de conocimiento</h2>
+          <p>Responde preguntas generales relacionadas con tu puesto.</p><span class="module-link">Ingresar al módulo <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="module-card module-card-feedback" routerLink="/sugerencias">
+          <span class="module-kicker">AMBIENTE LABORAL</span><h2>Sugerencias y quejas</h2>
+          <p>Comparte una idea o inquietud con administración, con nombre o anónimamente.</p><span class="module-link">Ingresar al módulo <span aria-hidden="true">→</span></span>
+        </a>
+      </section>
+    }
 
     <section class="attendance-band">
       <div class="clock-block"><p class="eyebrow">HORA DE GUATEMALA <span class="live-indicator">EN VIVO</span></p><div class="digital-clock">{{ horaActual() }}</div><p class="clock-caption">America / Guatemala · UTC−6</p></div>

@@ -12,6 +12,8 @@ async function login(req, res, next) {
   try {
     const [empleados] = await pool.execute(
       `SELECT e.id, e.codigo_empleado, e.nombre, e.password_hash, e.rol_id,
+              e.is_temporary, e.exam_id, e.exam_completed,
+              (e.temp_expires_at > NOW()) AS temp_access_valid,
               p.nombre_puesto, r.nombre AS nombre_rol
        FROM empleados e
        INNER JOIN puestos p ON p.id = e.puesto_id
@@ -28,6 +30,15 @@ async function login(req, res, next) {
       return res.status(401).json({ mensaje: 'Credenciales inválidas.' });
     }
 
+    if (Number(empleado.is_temporary) === 1) {
+      if (Number(empleado.temp_access_valid) !== 1) {
+        return res.status(403).json({ mensaje: 'El acceso temporal ha expirado.' });
+      }
+      if (empleado.exam_completed) {
+        return res.status(403).json({ mensaje: 'Este examen ya fue enviado; el acceso temporal quedó cerrado.' });
+      }
+    }
+
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ mensaje: 'La autenticación no está configurada en el servidor.' });
     }
@@ -38,9 +49,13 @@ async function login(req, res, next) {
       nombre: empleado.nombre,
       puesto: empleado.nombre_puesto,
       rol: empleado.nombre_rol,
-      rol_id: empleado.rol_id
+      rol_id: empleado.rol_id,
+      is_temporary: Number(empleado.is_temporary) === 1,
+      exam_id: empleado.exam_id
     };
-    const token = jwt.sign(perfil, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign(perfil, process.env.JWT_SECRET, {
+      expiresIn: empleado.is_temporary ? '24h' : '8h',
+    });
 
     return res.json({ token, usuario: perfil });
   } catch (error) {

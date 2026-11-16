@@ -1,5 +1,5 @@
 const express = require('express');
-const { verificarToken } = require('../middlewares/authMiddleware');
+const { verificarToken, restringirAspirantesTemporales } = require('../middlewares/authMiddleware');
 const {
   registrarMarcacion,
   obtenerHistorialEmpleado
@@ -7,7 +7,7 @@ const {
 
 const router = express.Router();
 
-router.use(verificarToken);
+router.use(verificarToken, restringirAspirantesTemporales);
 router.post('/marcar', registrarMarcacion);
 router.get('/mi-historial', obtenerHistorialEmpleado);
 

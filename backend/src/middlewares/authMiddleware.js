@@ -28,4 +28,25 @@ function permitirRoles(...rolesPermitidos) {
   };
 }
 
-module.exports = { verificarToken, permitirRoles };
+function restringirAspirantesTemporales(req, res, next) {
+  if (req.usuario?.is_temporary) {
+    return res.status(403).json({ mensaje: 'Las cuentas temporales solo pueden acceder al examen asignado.' });
+  }
+
+  return next();
+}
+
+function exigirAspiranteTemporal(req, res, next) {
+  if (!req.usuario?.is_temporary) {
+    return res.status(403).json({ mensaje: 'Esta sección es exclusiva para aspirantes temporales.' });
+  }
+
+  return next();
+}
+
+module.exports = {
+  verificarToken,
+  permitirRoles,
+  restringirAspirantesTemporales,
+  exigirAspiranteTemporal,
+};

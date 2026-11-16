@@ -7,11 +7,13 @@ const asistenciaRoutes = require('./src/routes/asistenciaRoutes');
 const rrhhRoutes = require('./src/routes/rrhhRoutes');
 const evaluacionesRoutes = require('./src/routes/evaluacionesRoutes');
 const sugerenciasRoutes = require('./src/routes/sugerenciasRoutes');
+const examenesAspirantesRoutes = require('./src/routes/examenesAspirantesRoutes');
+const adminExamenesRoutes = require('./src/routes/adminExamenesRoutes');
 
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '512kb' }));
 
 app.get('/', (req, res) => {
   res.json({ estado: 'ok', servicio: 'SIMET API' });
@@ -22,6 +24,8 @@ app.use('/api/asistencia', asistenciaRoutes);
 app.use('/api/rrhh', rrhhRoutes);
 app.use('/api/evaluaciones', evaluacionesRoutes);
 app.use('/api/sugerencias', sugerenciasRoutes);
+app.use('/api/exams', examenesAspirantesRoutes);
+app.use('/api/admin', adminExamenesRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ mensaje: 'Ruta no encontrada.' });

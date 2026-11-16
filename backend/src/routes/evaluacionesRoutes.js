@@ -1,5 +1,5 @@
 const express = require('express');
-const { verificarToken, permitirRoles } = require('../middlewares/authMiddleware');
+const { verificarToken, permitirRoles, restringirAspirantesTemporales } = require('../middlewares/authMiddleware');
 const {
   obtenerPuestos,
   obtenerEmpleados,
@@ -15,7 +15,7 @@ const {
 
 const router = express.Router();
 
-router.use(verificarToken);
+router.use(verificarToken, restringirAspirantesTemporales);
 router.get('/puestos', permitirRoles(2, 3), obtenerPuestos);
 router.get('/empleados', permitirRoles(2, 3), obtenerEmpleados);
 router.get('/mis-criterios', obtenerMisCriterios);

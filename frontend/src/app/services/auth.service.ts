@@ -11,6 +11,8 @@ export interface Usuario {
   puesto: string;
   rol: string;
   rol_id: number;
+  is_temporary: boolean;
+  exam_id: number | null;
 }
 
 interface LoginResponse {
@@ -87,5 +89,9 @@ export class AuthService {
   hasRrhhRole(): boolean {
     const roleId = Number(this.getPayload()?.rol_id ?? this.getUsuario()?.rol_id);
     return roleId === 2 || roleId === 3;
+  }
+
+  isTemporaryAspirant(): boolean {
+    return this.getPayload()?.is_temporary === true || this.getUsuario()?.is_temporary === true;
   }
 }

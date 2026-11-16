@@ -1,1 +1,1 @@
-window.API_URL = 'https://simet-asistencia.onrender.com/api';
+ window.API_URL = 'https://simet-asistencia.onrender.com/api';

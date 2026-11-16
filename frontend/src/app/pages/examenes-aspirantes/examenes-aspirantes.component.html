@@ -1,0 +1,116 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/rrhh"><span class="brand-mark">S</span><span>SIMET <small>ASISTENCIA</small></span></a>
+    <div class="topbar-actions"><span class="admin-label">SELECCIÓN DE PERSONAL</span><span class="user-chip">{{ usuario?.nombre }}</span><button class="icon-button" type="button" aria-label="Cerrar sesión" (click)="salir()">×</button></div>
+  </header>
+
+  <main class="workspace aspirant-admin">
+    <div class="page-heading">
+      <div><p class="eyebrow">ADMINISTRACIÓN / RECLUTAMIENTO</p><h1>Exámenes de aspirantes</h1><p class="subheading">Genera accesos temporales y revisa las respuestas completas.</p></div>
+      <a class="button button-outline" routerLink="/rrhh">Volver a RR. HH.</a>
+    </div>
+
+    @if (aviso(); as mensaje) {
+      <div class="alert" [class.alert-success]="mensaje.tipo === 'success'" [class.alert-error]="mensaje.tipo === 'error'" role="status">{{ mensaje.texto }}</div>
+    }
+
+    <section class="candidate-admin-grid">
+      <article class="exam-panel">
+        <p class="eyebrow">NUEVO ACCESO</p><h2>Generar credenciales</h2>
+        <p class="panel-description">El usuario podrá ingresar al examen asignado durante 24 horas y solo una vez.</p>
+        <form [formGroup]="formulario" (ngSubmit)="generarAcceso()">
+          <label for="aspirante-nombre">Nombre del aspirante</label>
+          <input id="aspirante-nombre" type="text" formControlName="nombre" autocomplete="name" maxlength="100" required>
+          @if (formulario.controls.nombre.touched && formulario.controls.nombre.invalid) { <small class="field-error">Ingresa un nombre de al menos 2 caracteres.</small> }
+
+          <label for="aspirante-correo">Correo</label>
+          <input id="aspirante-correo" type="email" formControlName="correo" autocomplete="email" maxlength="254" required>
+          @if (formulario.controls.correo.touched && formulario.controls.correo.invalid) { <small class="field-error">Ingresa un correo válido.</small> }
+
+          <label for="aspirante-examen">Examen y puesto</label>
+          <select id="aspirante-examen" formControlName="exam_id" required>
+            <option value="">Selecciona un examen</option>
+            @for (examen of examenes(); track examen.id) {
+              <option [value]="examen.id">{{ examen.target_role }} · {{ examen.title }}</option>
+            }
+          </select>
+          @if (examenes().length === 0 && !cargando()) { <small class="field-error">No hay exámenes disponibles. Verifica la instalación de la base de datos.</small> }
+
+          <button class="button button-accent" type="submit" [disabled]="guardando() || cargando()">
+            {{ guardando() ? 'Generando…' : 'Generar acceso temporal' }}
+          </button>
+        </form>
+
+        @if (credenciales(); as acceso) {
+          <section class="credentials-card" aria-live="polite">
+            <p class="eyebrow">COPIA AHORA · LA CONTRASEÑA NO SE VOLVERÁ A MOSTRAR</p>
+            <h3>{{ acceso.nombre }}</h3>
+            <div class="credential-row"><div><span>USUARIO</span><strong>{{ acceso.usuario }}</strong></div><button class="button button-outline" type="button" (click)="copiar(acceso.usuario, 'Usuario')">Copiar</button></div>
+            <div class="credential-row"><div><span>CONTRASEÑA TEMPORAL</span><strong class="credential-password">{{ acceso.password_temporal }}</strong></div><button class="button button-outline" type="button" (click)="copiar(acceso.password_temporal, 'Contraseña')">Copiar</button></div>
+            <p class="credential-expiry">Expira: {{ fecha(acceso.expira_en) }}</p>
+          </section>
+        }
+      </article>
+
+      <article class="exam-panel submissions-panel">
+        <div class="section-heading"><div><p class="eyebrow">BANDEJA DE REVISIÓN</p><h2>Exámenes enviados</h2></div><span class="record-count">{{ envios().length }} registros</span></div>
+        @if (envios().length === 0) {
+          <p class="history-empty">Todavía no hay exámenes enviados.</p>
+        } @else {
+          <div class="submission-list">
+            @for (envio of envios(); track envio.id) {
+              <article class="submission-row">
+                <div><strong>{{ envio.nombre }}</strong><small>{{ envio.puesto }} · {{ envio.titulo_examen }}</small><small>{{ envio.usuario }} · {{ fecha(envio.submitted_at) }}</small></div>
+                <div class="submission-result">
+                  <span class="review-state" [class.review-pending]="envio.review_status === 'PENDING_REVIEW'">{{ envio.review_status === 'PENDING_REVIEW' ? 'Pendiente de revisión' : 'Revisado' }}</span>
+                  <strong>{{ envio.final_score === null ? (formatoPuntaje(envio.auto_score) + ' automático') : (formatoPuntaje(envio.final_score) + ' final') }}</strong>
+                  <button class="button button-outline" type="button" (click)="abrirRevision(envio)">Ver examen</button>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </article>
+    </section>
+    <footer class="workspace-footer"><span>SIMET · RECURSOS HUMANOS</span><span>Las contraseñas temporales se muestran una sola vez.</span></footer>
+  </main>
+</div>
+
+@if (cargandoRevision()) {
+  <div class="modal-backdrop"><section class="modal-panel"><p class="evaluation-loading">Cargando examen completo…</p></section></div>
+}
+
+@if (revision(); as detalle) {
+  <div class="modal-backdrop review-backdrop">
+    <section class="modal-panel review-modal" role="dialog" aria-modal="true" aria-labelledby="review-title">
+      <div class="modal-header"><div><p class="eyebrow">{{ detalle.envio.puesto }} · {{ detalle.envio.titulo_examen }}</p><h2 id="review-title">Revisión de {{ detalle.envio.nombre }}</h2><p class="review-meta">{{ detalle.envio.correo }} · {{ detalle.envio.usuario }} · {{ fecha(detalle.envio.submitted_at) }}</p></div><button class="icon-button" type="button" aria-label="Cerrar revisión" (click)="cerrarRevision()">×</button></div>
+      <div class="review-summary"><span>Puntaje automático: <strong>{{ formatoPuntaje(detalle.envio.auto_score) }}</strong></span><span>Estado: <strong>{{ detalle.envio.review_status === 'PENDING_REVIEW' ? 'Pendiente' : 'Revisado' }}</strong></span></div>
+      <div class="complete-review">
+        @for (respuesta of detalle.respuestas; track respuesta.answer_id; let index = $index) {
+          <article class="answer-review-card">
+            <div class="answer-question"><span class="module-kicker">{{ respuesta.section }} · PREGUNTA {{ index + 1 }}</span><h3>{{ respuesta.question_text }}</h3></div>
+            @if (respuesta.question_type === 'MULTIPLE_CHOICE') {
+              <p class="submitted-answer">{{ opcion(respuesta) }}</p>
+              <p class="answer-score">Calificación automática: {{ puntaje(respuesta) }}</p>
+            } @else {
+              <p class="submitted-answer">{{ respuesta.response_text }}</p>
+              @if (respuesta.review_guide) { <details><summary>Guía de revisión</summary><p>{{ respuesta.review_guide }}</p></details> }
+              <div class="manual-grade">
+                <label [for]="'score-' + respuesta.answer_id">Puntaje (máximo {{ formatoPuntaje(respuesta.max_score) }})</label>
+                <input [id]="'score-' + respuesta.answer_id" type="number" min="0" step="0.01" [max]="respuesta.max_score" [value]="puntajes()[respuesta.answer_id]" (input)="actualizarPuntaje(respuesta.answer_id, $event)">
+                <label [for]="'comment-' + respuesta.answer_id">Comentario de revisión (opcional)</label>
+                <textarea [id]="'comment-' + respuesta.answer_id" rows="2" maxlength="2000" [value]="comentarios()[respuesta.answer_id]" (input)="actualizarComentario(respuesta.answer_id, $event)"></textarea>
+              </div>
+            }
+          </article>
+        }
+      </div>
+      <div class="review-actions">
+        <button class="button button-text" type="button" (click)="cerrarRevision()">Cerrar</button>
+        @if (respuestasAbiertas(detalle.respuestas).length) {
+          <button class="button button-accent" type="button" (click)="guardarRevision()" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar revisión completa' }}</button>
+        }
+      </div>
+    </section>
+  </div>
+}

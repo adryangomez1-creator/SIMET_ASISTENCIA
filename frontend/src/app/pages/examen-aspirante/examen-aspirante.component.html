@@ -1,0 +1,68 @@
+<div class="app-shell aspirant-shell">
+  <header class="topbar">
+    <a class="brand"><span class="brand-mark">S</span><span>SIMET <small>EXAMEN DE ASPIRANTE</small></span></a>
+    <div class="topbar-actions"><span class="user-chip">{{ usuario?.nombre }}</span><button class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="salir()"><ng-icon name="lucideLogOut" size="17" /></button></div>
+  </header>
+
+  <main class="workspace aspirant-workspace">
+    <div class="page-heading">
+      <div><p class="eyebrow">EVALUACIÓN DE CONOCIMIENTOS</p><h1>{{ titulo() || 'Examen asignado' }}</h1><p class="subheading">Responde todas las preguntas; al enviar, el acceso temporal se cerrará.</p></div>
+    </div>
+
+    @if (aviso(); as mensaje) {
+      <div class="alert" [class.alert-success]="mensaje.tipo === 'success'" [class.alert-error]="mensaje.tipo === 'error'" role="alert">{{ mensaje.texto }}</div>
+    }
+
+    @if (cargando()) {
+      <p class="evaluation-loading">Cargando examen…</p>
+    } @else if (resultado(); as enviado) {
+      <section class="exam-result" aria-live="polite">
+        <p class="eyebrow">EXAMEN ENVIADO</p>
+        <h2>Gracias por completar la evaluación.</h2>
+        <p>{{ enviado.mensaje }}</p>
+        <div class="result-score"><span>Puntaje automático</span><strong>{{ enviado.puntaje_automatico.toFixed(2) }} / {{ enviado.puntaje_maximo.toFixed(2) }}</strong></div>
+        @if (enviado.pendiente_revision) {
+          <p>Las respuestas abiertas serán revisadas por el equipo de selección. La sesión se cerrará automáticamente en unos segundos.</p>
+        } @else {
+          <p>La sesión se cerrará automáticamente en unos segundos.</p>
+        }
+        <button class="button button-outline" type="button" (click)="salir()">Cerrar sesión ahora</button>
+      </section>
+    } @else if (preguntas().length) {
+      <form class="aspirant-questionnaire" [formGroup]="respuestas" (ngSubmit)="enviar()">
+        @for (seccion of secciones(); track seccion) {
+          <section class="exam-section">
+            <header><p class="eyebrow">SECCIÓN</p><h2>{{ seccion }}</h2></header>
+            @for (pregunta of preguntasPorSeccion(seccion); track pregunta.id; let index = $index) {
+              <article class="exam-question">
+                <span class="module-kicker">PREGUNTA {{ index + 1 }} · {{ formatoPuntaje(pregunta.max_score) }} PUNTOS</span>
+                <h3>{{ pregunta.question_text }}</h3>
+                @if (pregunta.question_type === 'MULTIPLE_CHOICE' && pregunta.options) {
+                  <div class="exam-options">
+                    @for (opcion of pregunta.options; track $index) {
+                      <label class="exam-option">
+                        <input type="radio" [name]="'pregunta-' + pregunta.id" [formControl]="control(pregunta.id)" [value]="opcionValue($index)">
+                        <span>{{ opcion }}</span>
+                      </label>
+                    }
+                  </div>
+                } @else {
+                  <textarea [id]="'respuesta-' + pregunta.id" [formControl]="control(pregunta.id)" rows="4" maxlength="5000" placeholder="Escribe tu respuesta" required></textarea>
+                  <small class="manual-review-hint">Esta respuesta será revisada por el equipo de selección.</small>
+                }
+                @if (control(pregunta.id).touched && control(pregunta.id).invalid) {
+                  <small class="field-error">Debes responder esta pregunta.</small>
+                }
+              </article>
+            }
+          </section>
+        }
+        <div class="exam-submit-bar">
+          <span>El examen solo se puede enviar una vez.</span>
+          <button class="button button-accent" type="submit" [disabled]="guardando()">{{ guardando() ? 'Enviando…' : 'Enviar examen' }}</button>
+        </div>
+      </form>
+    }
+    <footer class="workspace-footer"><span>SIMET · PROCESO DE SELECCIÓN</span><span>El acceso expira 24 horas después de su creación.</span></footer>
+  </main>
+</div>

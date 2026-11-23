@@ -1,6 +1,10 @@
 const ExcelJS = require('exceljs');
 const pool = require('../config/db');
 
+const PAGINA_POR_DEFECTO = 1;
+const TAMANO_PAGINA_POR_DEFECTO = 25;
+const TAMANO_PAGINA_MAXIMO = 100;
+
 function filtrosReporte(query) {
   const condiciones = [];
   const parametros = [];
@@ -24,6 +28,20 @@ function filtrosReporte(query) {
   };
 }
 
+function leerPaginacion(query) {
+  const pagina = query.page === undefined ? PAGINA_POR_DEFECTO : Number(query.page);
+  const porPagina = query.page_size === undefined
+    ? TAMANO_PAGINA_POR_DEFECTO
+    : Number(query.page_size);
+
+  if (!Number.isSafeInteger(pagina) || pagina < 1
+    || !Number.isSafeInteger(porPagina) || porPagina < 1 || porPagina > TAMANO_PAGINA_MAXIMO) {
+    return null;
+  }
+
+  return { pagina, porPagina };
+}
+
 const consultaAsistencias = `
   SELECT m.id, e.id AS empleado_id, e.codigo_empleado, e.nombre, p.nombre_puesto, m.fecha,
          m.hora_entrada, m.hora_salida, m.estado_entrada, m.estado_salida
@@ -32,14 +50,43 @@ const consultaAsistencias = `
   INNER JOIN puestos p ON p.id = e.puesto_id
 `;
 
+const consultaConteoAsistencias = `
+  SELECT COUNT(*) AS total
+  FROM marcaciones m
+  INNER JOIN empleados e ON e.id = m.empleado_id
+`;
+
 async function obtenerTodasAsistencias(req, res, next) {
+  const paginacionSolicitada = leerPaginacion(req.query);
+  if (!paginacionSolicitada) {
+    return res.status(400).json({ mensaje: 'La página debe ser positiva y el tamaño debe estar entre 1 y 100.' });
+  }
+
   try {
     const filtros = filtrosReporte(req.query);
-    const [asistencias] = await pool.execute(
-      `${consultaAsistencias} ${filtros.where} ORDER BY m.fecha DESC, e.nombre ASC`,
+    const [conteos] = await pool.execute(
+      `${consultaConteoAsistencias} ${filtros.where}`,
       filtros.parametros
     );
-    return res.json({ asistencias });
+    const total = Number(conteos[0]?.total || 0);
+    const totalPaginas = Math.ceil(total / paginacionSolicitada.porPagina);
+    const pagina = Math.min(paginacionSolicitada.pagina, Math.max(totalPaginas, 1));
+    const offset = (pagina - 1) * paginacionSolicitada.porPagina;
+    const [asistencias] = await pool.execute(
+      `${consultaAsistencias} ${filtros.where}
+       ORDER BY m.fecha DESC, e.nombre ASC, m.id DESC
+       LIMIT ? OFFSET ?`,
+      [...filtros.parametros, paginacionSolicitada.porPagina, offset]
+    );
+    return res.json({
+      asistencias,
+      paginacion: {
+        pagina,
+        por_pagina: paginacionSolicitada.porPagina,
+        total,
+        total_paginas: totalPaginas,
+      },
+    });
   } catch (error) {
     return next(error);
   }

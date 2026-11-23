@@ -6,7 +6,14 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowDownToLine, lucideArrowRight, lucideLogOut, lucidePencil, lucidePlus, lucideX } from '@ng-icons/lucide';
 import { Marcacion } from '../../services/asistencia.service';
 import { AuthService } from '../../services/auth.service';
-import { DatosCorreccion, DatosIncidencia, EmpleadoRrhh, FiltrosAsistencia, RrhhService } from '../../services/rrhh.service';
+import {
+  DatosCorreccion,
+  DatosIncidencia,
+  EmpleadoRrhh,
+  FiltrosAsistencia,
+  PaginacionAsistencias,
+  RrhhService,
+} from '../../services/rrhh.service';
 
 interface EmpleadoOpcion {
   id: number;
@@ -28,6 +35,12 @@ export class RrhhDashboardComponent implements OnInit {
 
   protected readonly usuario = this.auth.getUsuario();
   protected readonly asistencias = signal<Marcacion[]>([]);
+  protected readonly paginacion = signal<PaginacionAsistencias>({
+    pagina: 1,
+    por_pagina: 25,
+    total: 0,
+    total_paginas: 0,
+  });
   protected readonly empleados = signal<EmpleadoRrhh[]>([]);
   protected readonly cargando = signal(false);
   protected readonly modal = signal<'correccion' | 'incidencia' | null>(null);
@@ -63,12 +76,32 @@ export class RrhhDashboardComponent implements OnInit {
   }
 
   protected buscar(): void {
-    this.cargarAsistencias();
+    this.cargarAsistencias(1);
   }
 
   protected limpiarFiltros(): void {
     this.filtros.reset({ busqueda: '', fecha_inicio: '', fecha_fin: '' });
-    this.cargarAsistencias();
+    this.cargarAsistencias(1);
+  }
+
+  protected paginaAnterior(): void {
+    const pagina = this.paginacion().pagina;
+    if (!this.cargando() && pagina > 1) this.cargarAsistencias(pagina - 1);
+  }
+
+  protected paginaSiguiente(): void {
+    const { pagina, total_paginas: totalPaginas } = this.paginacion();
+    if (!this.cargando() && pagina < totalPaginas) this.cargarAsistencias(pagina + 1);
+  }
+
+  protected rangoInicio(): number {
+    const { pagina, por_pagina: porPagina, total } = this.paginacion();
+    return total === 0 ? 0 : (pagina - 1) * porPagina + 1;
+  }
+
+  protected rangoFin(): number {
+    const { pagina, por_pagina: porPagina, total } = this.paginacion();
+    return Math.min(pagina * porPagina, total);
   }
 
   protected abrirCorreccion(item: Marcacion): void {
@@ -175,11 +208,12 @@ export class RrhhDashboardComponent implements OnInit {
     return { busqueda: value.busqueda.trim(), fecha_inicio: value.fecha_inicio, fecha_fin: value.fecha_fin };
   }
 
-  private cargarAsistencias(): void {
+  private cargarAsistencias(pagina = this.paginacion().pagina): void {
     this.cargando.set(true);
-    this.rrhh.obtenerAsistencias(this.obtenerFiltros()).subscribe({
-      next: ({ asistencias }) => {
+    this.rrhh.obtenerAsistencias(this.obtenerFiltros(), pagina).subscribe({
+      next: ({ asistencias, paginacion }) => {
         this.asistencias.set(asistencias);
+        this.paginacion.set(paginacion);
         this.cargando.set(false);
       },
       error: (error: HttpErrorResponse) => {

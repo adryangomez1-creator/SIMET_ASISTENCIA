@@ -26,8 +26,8 @@
         <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" formControlName="busqueda" placeholder="Buscar código o empleado" aria-label="Buscar por código o nombre"></label>
         <label class="date-filter"><span>Desde</span><input type="date" formControlName="fecha_inicio" aria-label="Fecha inicial"></label>
         <label class="date-filter"><span>Hasta</span><input type="date" formControlName="fecha_fin" aria-label="Fecha final"></label>
-        <button class="button button-dark" type="submit">Filtrar <ng-icon name="lucideArrowRight" size="16" /></button>
-        <button class="button button-text" type="button" (click)="limpiarFiltros()">Limpiar</button>
+        <button class="button button-dark" type="submit" [disabled]="cargando()">Filtrar <ng-icon name="lucideArrowRight" size="16" /></button>
+        <button class="button button-text" type="button" (click)="limpiarFiltros()" [disabled]="cargando()">Limpiar</button>
       </form>
 
       <section class="table-frame rrhh-table-frame">
@@ -54,7 +54,16 @@
             </tbody>
           </table>
         </div>
-        <footer class="table-footer">{{ asistencias().length }} registros encontrados</footer>
+        <footer class="table-footer rrhh-pagination-footer">
+          <span>Mostrando {{ rangoInicio() }}–{{ rangoFin() }} de {{ paginacion().total }} registros</span>
+          @if (paginacion().total_paginas > 1) {
+            <nav class="rrhh-pagination-controls" aria-label="Paginación de asistencias">
+              <button class="button button-outline" type="button" (click)="paginaAnterior()" [disabled]="cargando() || paginacion().pagina === 1">Anterior</button>
+              <span>Página {{ paginacion().pagina }} de {{ paginacion().total_paginas }}</span>
+              <button class="button button-outline" type="button" (click)="paginaSiguiente()" [disabled]="cargando() || paginacion().pagina === paginacion().total_paginas">Siguiente</button>
+            </nav>
+          }
+        </footer>
       </section>
     </section>
     <footer class="workspace-footer"><span>SIMET · RECURSOS HUMANOS</span><span>Las correcciones quedan registradas en auditoría</span></footer>

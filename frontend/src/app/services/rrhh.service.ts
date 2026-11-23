@@ -10,6 +10,18 @@ export interface FiltrosAsistencia {
   fecha_fin?: string;
 }
 
+export interface PaginacionAsistencias {
+  pagina: number;
+  por_pagina: number;
+  total: number;
+  total_paginas: number;
+}
+
+export interface RespuestaAsistencias {
+  asistencias: Marcacion[];
+  paginacion: PaginacionAsistencias;
+}
+
 export interface DatosCorreccion {
   marcacion_id: number;
   motivo: string;
@@ -39,12 +51,17 @@ export class RrhhService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/rrhh`;
 
-  obtenerAsistencias(filtros: FiltrosAsistencia): Observable<{ asistencias: Marcacion[] }> {
+  obtenerAsistencias(
+    filtros: FiltrosAsistencia,
+    pagina = 1,
+    porPagina = 25,
+  ): Observable<RespuestaAsistencias> {
     let params = new HttpParams();
     if (filtros.busqueda) params = params.set('codigo_empleado', filtros.busqueda);
     if (filtros.fecha_inicio) params = params.set('fecha_inicio', filtros.fecha_inicio);
     if (filtros.fecha_fin) params = params.set('fecha_fin', filtros.fecha_fin);
-    return this.http.get<{ asistencias: Marcacion[] }>(`${this.baseUrl}/asistencias`, { params });
+    params = params.set('page', pagina).set('page_size', porPagina);
+    return this.http.get<RespuestaAsistencias>(`${this.baseUrl}/asistencias`, { params });
   }
 
   obtenerEmpleados(): Observable<{ empleados: EmpleadoRrhh[] }> {

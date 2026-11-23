@@ -33,12 +33,12 @@
       <section class="table-frame rrhh-table-frame">
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Empleado</th><th>Puesto</th><th>Fecha</th><th>Entrada</th><th>Estado</th><th>Salida</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+            <thead><tr><th>Empleado</th><th>Puesto</th><th>Fecha</th><th>Entrada</th><th>Estado</th><th>Salida</th><th>Estado</th><th>Horas trabajadas</th><th>Horas extra</th><th><span class="sr-only">Acciones</span></th></tr></thead>
             <tbody>
               @if (cargando()) {
-                <tr><td colspan="8" class="table-empty">Cargando asistencias…</td></tr>
+                <tr><td colspan="10" class="table-empty">Cargando asistencias…</td></tr>
               } @else if (asistencias().length === 0) {
-                <tr><td colspan="8" class="table-empty">No hay marcaciones para los filtros seleccionados.</td></tr>
+                <tr><td colspan="10" class="table-empty">No hay marcaciones para los filtros seleccionados.</td></tr>
               } @else {
                 @for (item of asistencias(); track item.id) {
                   <tr>
@@ -47,6 +47,8 @@
                     <td><span class="state-pill" [class.state-good]="item.estado_entrada === 'puntual'" [class.state-warn]="item.estado_entrada === 'atraso'">{{ etiquetaEstado(item.estado_entrada) }}</span></td>
                     <td>{{ hora(item.hora_salida) }}</td>
                     <td><span class="state-pill" [class.state-good]="item.estado_salida === 'normal'" [class.state-warn]="item.estado_salida === 'anticipada'">{{ etiquetaEstado(item.estado_salida) }}</span></td>
+                    <td>{{ duracion(item.minutos_trabajados) }}</td>
+                    <td>{{ duracion(item.minutos_extra) }}</td>
                     <td><button class="small-action" type="button" title="Corregir marcación" aria-label="Corregir marcación" (click)="abrirCorreccion(item)"><ng-icon name="lucidePencil" size="16" /></button></td>
                   </tr>
                 }
@@ -55,6 +57,7 @@
           </table>
         </div>
         <footer class="table-footer rrhh-pagination-footer">
+          <span>Horas trabajadas descuentan 1 h de almuerzo; extras después del horario asignado.</span>
           <span>Mostrando {{ rangoInicio() }}–{{ rangoFin() }} de {{ paginacion().total }} registros</span>
           @if (paginacion().total_paginas > 1) {
             <nav class="rrhh-pagination-controls" aria-label="Paginación de asistencias">
@@ -77,7 +80,7 @@
       @if (seleccionada(); as item) { <p class="modal-context"><strong>{{ item.nombre }}</strong> · {{ formatoFecha(item.fecha) }} · {{ item.codigo_empleado }}</p> }
       <form [formGroup]="correccionForm" (ngSubmit)="guardarCorreccion()">
         <label for="campo-correccion">Marcación a corregir</label><select id="campo-correccion" formControlName="campo"><option value="hora_entrada">Hora de entrada</option><option value="hora_salida">Hora de salida</option></select>
-        <label for="hora-correccion">Nueva fecha y hora</label><input id="hora-correccion" type="datetime-local" formControlName="hora" required>
+        <label for="hora-correccion">Nueva fecha y hora</label><input id="hora-correccion" type="datetime-local" step="1" formControlName="hora" required>
         <label for="motivo-correccion">Motivo <span class="required-mark">OBLIGATORIO</span></label><textarea id="motivo-correccion" formControlName="motivo" rows="3" placeholder="Describe por qué se realiza el cambio" required></textarea>
         @if (correccionForm.controls.motivo.touched && correccionForm.controls.motivo.invalid) { <span class="field-error">El motivo es obligatorio y debe tener al menos 4 caracteres.</span> }
         <div class="modal-actions"><button class="button button-text" type="button" (click)="cerrarModal()">Cancelar</button><button class="button button-accent" type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar corrección' }}</button></div>

@@ -31,7 +31,10 @@ function loadController(relativePath) {
 }
 
 const { login } = loadController('../src/controllers/authController');
-const { registrarMarcacion } = loadController('../src/controllers/asistenciaController');
+const {
+  registrarMarcacion,
+  obtenerHistorialEmpleado,
+} = loadController('../src/controllers/asistenciaController');
 const { enviarExamen, revisarEnvio } = loadController('../src/controllers/examenesAspirantesController');
 const { obtenerTodasAsistencias } = loadController('../src/controllers/rrhhController');
 const jwtSecretAnterior = process.env.JWT_SECRET;
@@ -82,7 +85,14 @@ test('attendance list applies filters, a stable order, and the requested page', 
     queries.push({ sql, params });
     return sql.includes('COUNT(*) AS total')
       ? [[{ total: 53 }]]
-      : [[{ id: 26, codigo_empleado: 'SIMET-26' }]];
+      : [[{
+        id: 26,
+        codigo_empleado: 'SIMET-26',
+        fecha: '2026-01-21',
+        hora_entrada: '2026-01-21 07:00:00',
+        hora_salida: '2026-01-21 18:15:00',
+        hora_salida_programada: '17:30:00',
+      }]];
   };
 
   const response = await callHandler(obtenerTodasAsistencias, {
@@ -97,6 +107,8 @@ test('attendance list applies filters, a stable order, and the requested page', 
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.asistencias.length, 1);
+  assert.equal(response.body.asistencias[0].minutos_trabajados, 615);
+  assert.equal(response.body.asistencias[0].minutos_extra, 45);
   assert.deepEqual(response.body.paginacion, {
     pagina: 2,
     por_pagina: 25,
@@ -120,6 +132,27 @@ test('attendance list applies filters, a stable order, and the requested page', 
   ]);
   assert.match(queries[1].sql, /ORDER BY m\.fecha DESC, e\.nombre ASC, m\.id DESC/);
   assert.match(queries[1].sql, /LIMIT \? OFFSET \?/);
+});
+
+test('employee attendance history includes worked and overtime durations', async () => {
+  let queriedSql;
+  pool.execute = async (sql, params) => {
+    queriedSql = sql;
+    assert.deepEqual(params, [8]);
+    return [[{
+      id: 1,
+      fecha: '2026-11-22',
+      hora_entrada: '2026-11-22 07:00:00',
+      hora_salida: '2026-11-22 18:15:00',
+      hora_salida_programada: '17:30:00',
+    }]];
+  };
+
+  const response = await callHandler(obtenerHistorialEmpleado, { usuario: { id: 8 } });
+
+  assert.equal(response.body.marcaciones[0].minutos_trabajados, 615);
+  assert.equal(response.body.marcaciones[0].minutos_extra, 45);
+  assert.match(queriedSql, /INNER JOIN horarios h ON h\.id = e\.horario_id/);
 });
 
 test('attendance list rejects invalid pagination without querying the database', async () => {

@@ -1,5 +1,6 @@
 const ExcelJS = require('exceljs');
 const pool = require('../config/db');
+const { calcularDuracionAsistencia } = require('../utils/calculoAsistencia');
 
 const PAGINA_POR_DEFECTO = 1;
 const TAMANO_PAGINA_POR_DEFECTO = 25;
@@ -44,10 +45,12 @@ function leerPaginacion(query) {
 
 const consultaAsistencias = `
   SELECT m.id, e.id AS empleado_id, e.codigo_empleado, e.nombre, p.nombre_puesto, m.fecha,
-         m.hora_entrada, m.hora_salida, m.estado_entrada, m.estado_salida
+         m.hora_entrada, m.hora_salida, m.estado_entrada, m.estado_salida,
+         h.hora_salida AS hora_salida_programada
   FROM marcaciones m
   INNER JOIN empleados e ON e.id = m.empleado_id
   INNER JOIN puestos p ON p.id = e.puesto_id
+  INNER JOIN horarios h ON h.id = e.horario_id
 `;
 
 const consultaConteoAsistencias = `
@@ -79,7 +82,10 @@ async function obtenerTodasAsistencias(req, res, next) {
       [...filtros.parametros, paginacionSolicitada.porPagina, offset]
     );
     return res.json({
-      asistencias,
+      asistencias: asistencias.map((asistencia) => ({
+        ...asistencia,
+        ...calcularDuracionAsistencia(asistencia),
+      })),
       paginacion: {
         pagina,
         por_pagina: paginacionSolicitada.porPagina,
@@ -194,10 +200,14 @@ async function registrarIncidencia(req, res, next) {
 async function exportarReporteExcel(req, res, next) {
   try {
     const filtros = filtrosReporte(req.query);
-    const [asistencias] = await pool.execute(
+    const [registrosAsistencia] = await pool.execute(
       `${consultaAsistencias} ${filtros.where} ORDER BY m.fecha DESC, e.nombre ASC`,
       filtros.parametros
     );
+    const asistencias = registrosAsistencia.map((asistencia) => ({
+      ...asistencia,
+      ...calcularDuracionAsistencia(asistencia),
+    }));
 
     const condicionesIncidencias = [];
     const parametrosIncidencias = [];
@@ -238,13 +248,19 @@ async function exportarReporteExcel(req, res, next) {
       { header: 'Fecha', key: 'fecha', width: 14 },
       { header: 'Entrada', key: 'hora_entrada', width: 22 },
       { header: 'Salida', key: 'hora_salida', width: 22 },
+      { header: 'Horas trabajadas (menos 1 h de almuerzo)', key: 'minutos_trabajados', width: 36 },
+      { header: 'Horas extra', key: 'minutos_extra', width: 16 },
       { header: 'Estado entrada', key: 'estado_entrada', width: 18 },
       { header: 'Estado salida', key: 'estado_salida', width: 18 }
     ];
-    hojaAsistencias.addRows(asistencias);
+    hojaAsistencias.addRows(asistencias.map((asistencia) => ({
+      ...asistencia,
+      minutos_trabajados: formatearDuracion(asistencia.minutos_trabajados),
+      minutos_extra: formatearDuracion(asistencia.minutos_extra),
+    })));
     hojaAsistencias.getRow(1).font = { bold: true };
     hojaAsistencias.views = [{ state: 'frozen', ySplit: 1 }];
-    hojaAsistencias.autoFilter = { from: 'A1', to: 'I1' };
+    hojaAsistencias.autoFilter = { from: 'A1', to: 'K1' };
 
     const hojaIncidencias = libro.addWorksheet('Incidencias');
     hojaIncidencias.columns = [
@@ -267,6 +283,13 @@ async function exportarReporteExcel(req, res, next) {
   } catch (error) {
     return next(error);
   }
+}
+
+function formatearDuracion(minutos) {
+  if (minutos === null || minutos === undefined) return 'Pendiente';
+  const horas = Math.floor(minutos / 60);
+  const minutosRestantes = minutos % 60;
+  return `${horas} h ${String(minutosRestantes).padStart(2, '0')} min`;
 }
 
 module.exports = {

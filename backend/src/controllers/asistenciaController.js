@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { calcularDuracionAsistencia } = require('../utils/calculoAsistencia');
 
 const ZONA_HORARIA = 'America/Guatemala';
 
@@ -97,15 +98,23 @@ async function registrarMarcacion(req, res, next) {
 async function obtenerHistorialEmpleado(req, res, next) {
   try {
     const [marcaciones] = await pool.execute(
-      `SELECT id, fecha, hora_entrada, hora_salida, estado_entrada, estado_salida
-       FROM marcaciones
-       WHERE empleado_id = ?
-       ORDER BY fecha DESC, id DESC
+      `SELECT m.id, m.fecha, m.hora_entrada, m.hora_salida,
+              m.estado_entrada, m.estado_salida, h.hora_salida AS hora_salida_programada
+       FROM marcaciones m
+       INNER JOIN empleados e ON e.id = m.empleado_id
+       INNER JOIN horarios h ON h.id = e.horario_id
+       WHERE m.empleado_id = ?
+       ORDER BY m.fecha DESC, m.id DESC
        LIMIT 30`,
       [req.usuario.id]
     );
 
-    return res.json({ marcaciones });
+    return res.json({
+      marcaciones: marcaciones.map((marcacion) => ({
+        ...marcacion,
+        ...calcularDuracionAsistencia(marcacion),
+      })),
+    });
   } catch (error) {
     return next(error);
   }

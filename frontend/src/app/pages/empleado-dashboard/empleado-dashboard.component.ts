@@ -75,6 +75,13 @@ export class EmpleadoDashboardComponent implements OnInit {
     });
   }
 
+  protected duracion(minutos: number | null | undefined): string {
+    if (typeof minutos !== 'number' || !Number.isFinite(minutos)) return 'No disponible';
+    const horas = Math.floor(minutos / 60);
+    const minutosRestantes = minutos % 60;
+    return `${horas} h ${String(minutosRestantes).padStart(2, '0')} min`;
+  }
+
   private cargarHistorial(): void {
     this.cargando.set(true);
     this.asistencia.obtenerHistorial().subscribe({

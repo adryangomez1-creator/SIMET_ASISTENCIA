@@ -58,12 +58,12 @@
     <section class="table-frame">
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Fecha</th><th>Entrada</th><th>Estado</th><th>Salida</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Entrada</th><th>Estado</th><th>Salida</th><th>Estado</th><th>Horas trabajadas</th><th>Horas extra</th></tr></thead>
           <tbody>
             @if (cargando()) {
-              <tr><td colspan="5" class="table-empty">Cargando historial…</td></tr>
+              <tr><td colspan="7" class="table-empty">Cargando historial…</td></tr>
             } @else if (historial().length === 0) {
-              <tr><td colspan="5" class="table-empty">Aún no hay marcaciones registradas.</td></tr>
+              <tr><td colspan="7" class="table-empty">Aún no hay marcaciones registradas.</td></tr>
             } @else {
               @for (item of historial(); track item.id) {
                 <tr>
@@ -72,13 +72,15 @@
                   <td><span class="state-pill" [class.state-good]="item.estado_entrada === 'puntual'" [class.state-warn]="item.estado_entrada === 'atraso'">{{ etiquetaEstado(item.estado_entrada) }}</span></td>
                   <td>{{ item.hora_salida?.slice(11, 16) || '—' }}</td>
                   <td><span class="state-pill" [class.state-good]="item.estado_salida === 'normal'" [class.state-warn]="item.estado_salida === 'anticipada'">{{ etiquetaEstado(item.estado_salida) }}</span></td>
+                  <td>{{ duracion(item.minutos_trabajados) }}</td>
+                  <td>{{ duracion(item.minutos_extra) }}</td>
                 </tr>
               }
             }
           </tbody>
         </table>
       </div>
-      <footer class="table-footer">Se muestran tus últimas 30 marcaciones.</footer>
+      <footer class="table-footer">Se muestran tus últimas 30 marcaciones. Las horas trabajadas descuentan 1 h de almuerzo; las extras cuentan después del horario asignado.</footer>
     </section>
     <footer class="workspace-footer"><span>SIMET · SISTEMA DE ASISTENCIA</span><span>Los registros se procesan en hora de Guatemala</span></footer>
   </main>

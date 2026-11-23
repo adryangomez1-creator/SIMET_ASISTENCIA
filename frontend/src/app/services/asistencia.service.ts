@@ -10,6 +10,8 @@ export interface Marcacion {
   hora_salida: string | null;
   estado_entrada: 'puntual' | 'atraso' | null;
   estado_salida: 'normal' | 'anticipada' | null;
+  minutos_trabajados?: number | null;
+  minutos_extra?: number | null;
   codigo_empleado?: string;
   nombre?: string;
   nombre_puesto?: string;

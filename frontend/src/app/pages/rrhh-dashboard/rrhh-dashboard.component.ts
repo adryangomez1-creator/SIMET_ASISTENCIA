@@ -194,6 +194,13 @@ export class RrhhDashboardComponent implements OnInit {
     return value ? value.slice(11, 16) : '—';
   }
 
+  protected duracion(minutos: number | null | undefined): string {
+    if (typeof minutos !== 'number' || !Number.isFinite(minutos)) return 'No disponible';
+    const horas = Math.floor(minutos / 60);
+    const minutosRestantes = minutos % 60;
+    return `${horas} h ${String(minutosRestantes).padStart(2, '0')} min`;
+  }
+
   protected etiquetaEstado(estado: string | null): string {
     const etiquetas: Record<string, string> = { puntual: 'Puntual', atraso: 'Atraso', normal: 'Normal', anticipada: 'Anticipada' };
     return estado ? etiquetas[estado] || estado : 'Pendiente';
